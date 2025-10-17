@@ -37,6 +37,7 @@ class Player:
         # Stamina system
         self.stamina = 1.0  # 0.0 to 1.0 (empty to full)
         self.stamina_exhausted = False  # Track if we just hit 0 stamina
+        self.flip_locked_until_full = False  # Disable manual flip until stamina refills
         
         # Try to load sprites from sprite sheet
         self.sprite_sheet = None
@@ -194,7 +195,10 @@ class Player:
             if self.powered_up:
                 regen_rate *= settings.STAMINA_POWERUP_MULTIPLIER  # 3x faster with powerup
             self.stamina = min(1.0, self.stamina + regen_rate * settings.STAMINA_DRAIN_RATE * dt)
-            self.stamina_exhausted = False
+            # Unlock flip when fully refilled
+            if self.stamina >= 1.0:
+                self.stamina_exhausted = False
+                self.flip_locked_until_full = False
         else:
             # Drain stamina when floating (not on ground)
             self.stamina = max(0.0, self.stamina - settings.STAMINA_DRAIN_RATE * dt)
@@ -202,7 +206,10 @@ class Player:
             # Check if stamina just reached 0
             if self.stamina <= 0.0 and not self.stamina_exhausted:
                 self.stamina_exhausted = True
-                self.take_damage(1)  # Lose 1 HP
+                # Lock manual gravity flip until stamina fully refills
+                self.flip_locked_until_full = True
+                # Auto-trigger a gravity flip once when stamina depletes
+                self._trigger_gravity_flip()
     
     def _handle_attack(self, input_handler):
         """Handle attack input"""
@@ -231,12 +238,18 @@ class Player:
     
     def _handle_gravity_flip(self, input_handler):
         """Handle gravity flip action"""
+        # If flip is locked, ignore manual input until stamina fully refills
+        if self.flip_locked_until_full:
+            return
         if input_handler.is_action_pressed('action') and not self.flip_cooldown.is_active():
-            self.gravity_dir *= -1
-            self.flip_cooldown.start(settings.GRAVITY_FLIP_COOLDOWN)
-            
-            # Reset velocity slightly to feel more responsive
-            self.vel_y *= 0.5
+            self._trigger_gravity_flip()
+
+    def _trigger_gravity_flip(self):
+        """Flip gravity immediately, applying cooldown and velocity damping"""
+        self.gravity_dir *= -1
+        self.flip_cooldown.start(settings.GRAVITY_FLIP_COOLDOWN)
+        # Reset velocity slightly to feel more responsive
+        self.vel_y *= 0.5
     
     def _handle_jump(self, input_handler):
         """Handle jump with coyote time and buffer"""
@@ -351,6 +364,7 @@ class Player:
         # Reset stamina
         self.stamina = 1.0
         self.stamina_exhausted = False
+        self.flip_locked_until_full = False
     
     def is_invulnerable(self):
         """Check if player is currently invulnerable"""
@@ -370,7 +384,8 @@ class Player:
     
     def should_spawn_bullet(self):
         """Check if bullet should spawn (mid-attack animation)"""
-        if self.is_attacking and not self.bullet_spawned and self.current_frame >= 2:
+        # Spawn immediately when attack starts (no animation frame delay)
+        if self.is_attacking and not self.bullet_spawned:
             self.bullet_spawned = True
             return True
         return False
@@ -456,11 +471,15 @@ class Player:
             pygame.draw.polygon(screen, settings.COLOR_WHITE, indicator_points)
     
     def _draw_stamina_bar(self, screen, draw_rect):
-        """Draw stamina bar above player"""
+        """Draw stamina bar relative to gravity (above when normal, below when flipped)"""
         bar_width = 32
         bar_height = 4
         bar_x = draw_rect.centerx - bar_width // 2
-        bar_y = draw_rect.top - 10  # 10 pixels above player
+        # Place above in normal gravity, below when flipped
+        if self.gravity_dir == 1:
+            bar_y = draw_rect.top - 10
+        else:
+            bar_y = draw_rect.bottom + 6
         
         # Background bar (empty)
         bg_rect = pygame.Rect(bar_x, bar_y, bar_width, bar_height)

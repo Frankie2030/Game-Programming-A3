@@ -36,10 +36,18 @@ class InputHandler:
             pygame.K_d: 'right',
             pygame.K_w: 'jump',
             pygame.K_UP: 'jump',
+            # Additional jump keys to avoid rollover issues
+            pygame.K_k: 'jump',
+            pygame.K_z: 'jump',
             pygame.K_e: 'action',
             pygame.K_LSHIFT: 'action',
             pygame.K_RSHIFT: 'action',
+            # Multiple attack keys so firing is independent from jump
             pygame.K_SPACE: 'attack',
+            pygame.K_j: 'attack',
+            pygame.K_x: 'attack',
+            pygame.K_LCTRL: 'attack',
+            pygame.K_RCTRL: 'attack',
             pygame.K_ESCAPE: 'pause',
             pygame.K_p: 'pause',
             pygame.K_RETURN: 'confirm',
@@ -84,6 +92,15 @@ class InputHandler:
                 action = self.key_map.get(event.key)
                 if action:
                     self.actions[action] = False
+            
+            # Support mouse left button to attack
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:  # Left click
+                    self.actions['attack'] = True
+                    self.actions['attack_pressed'] = True
+            elif event.type == pygame.MOUSEBUTTONUP:
+                if event.button == 1:
+                    self.actions['attack'] = False
     
     def is_action_active(self, action):
         """Check if action is currently active (held)"""
