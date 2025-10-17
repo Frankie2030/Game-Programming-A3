@@ -8,17 +8,17 @@ SCREEN_HEIGHT = 720
 FPS = 60
 TITLE = "Gravity Courier"
 
+# Tile system
+TILE_SIZE = 32  # px
+WORLD_WIDTH = 5120  # px (160 tiles)
+WORLD_HEIGHT = 720  # px (22.5 tiles, round to 23)
+
 # Physics
 GRAVITY = 1400  # px/s²
 PLAYER_RUN_SPEED = 180  # px/s
 PLAYER_BOOST_SPEED = 230  # px/s (with Flux Surge)
 PLAYER_JUMP_IMPULSE = 520  # px/s
 GRAVITY_FLIP_COOLDOWN = 0.25  # seconds
-
-# Tile system
-TILE_SIZE = 32  # px
-WORLD_WIDTH = 5120  # px (160 tiles)
-WORLD_HEIGHT = 720  # px (22.5 tiles, round to 23)
 
 # Player
 PLAYER_HP = 3

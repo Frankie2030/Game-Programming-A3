@@ -73,3 +73,7 @@ class Stopwatch:
     def get_time(self):
         """Get elapsed time in seconds"""
         return self.elapsed
+    
+    def set_time(self, time):
+        """Set elapsed time"""
+        self.elapsed = time

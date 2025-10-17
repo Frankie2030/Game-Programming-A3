@@ -3,6 +3,7 @@ Main menu
 """
 import pygame
 from game.core import GameState, settings
+from game.core.save_system import SaveSystem
 
 
 class MainMenuState(GameState):
@@ -10,10 +11,18 @@ class MainMenuState(GameState):
     
     def __init__(self, stack):
         super().__init__(stack)
-        self.options = ['New Game', 'Options', 'About', 'Exit']
-        self.selected = 0
         self.title_font = pygame.font.Font(None, 72)
         self.menu_font = pygame.font.Font(None, 48)
+        self.small_font = pygame.font.Font(None, 20)
+        self._update_options()
+    
+    def _update_options(self):
+        """Update menu options based on save state"""
+        if SaveSystem.has_save():
+            self.options = ['Resume Game', 'New Game', 'Options', 'About', 'Exit']
+        else:
+            self.options = ['New Game', 'Options', 'About', 'Exit']
+        self.selected = 0
     
     def update(self, dt, events):
         """Update menu"""
@@ -33,8 +42,16 @@ class MainMenuState(GameState):
         """Handle menu selection"""
         option = self.options[self.selected]
         
-        if option == 'New Game':
+        if option == 'Resume Game':
             from game.world.level import LevelState
+            # Load saved game data and pass it to LevelState
+            save_data = SaveSystem.load_game()
+            if save_data:
+                self.stack.push(LevelState, save_data=save_data)
+        elif option == 'New Game':
+            from game.world.level import LevelState
+            # Delete existing save when starting new game
+            SaveSystem.delete_save()
             self.stack.push(LevelState)
         elif option == 'Options':
             from game.ui.options import OptionsState
@@ -72,3 +89,13 @@ class MainMenuState(GameState):
             if i == self.selected:
                 indicator = self.menu_font.render(">", True, settings.COLOR_YELLOW)
                 screen.blit(indicator, (rect.left - 50, rect.top))
+        
+        # Show save info if available
+        if SaveSystem.has_save():
+            save_info = SaveSystem.get_save_info()
+            if save_info:
+                boss_status = "Defeated" if save_info['boss_defeated'] else f"HP: {save_info['boss_hp']}"
+                info_text = f"Save: Level {save_info['level']} | {save_info['coins']} coins | {save_info['game_time']:.1f}s | Boss: {boss_status}"
+                info_surf = self.small_font.render(info_text, True, settings.COLOR_GRAY)
+                info_rect = info_surf.get_rect(centerx=settings.SCREEN_WIDTH // 2, y=start_y + len(self.options) * 60 + 20)
+                screen.blit(info_surf, info_rect)

@@ -15,6 +15,7 @@ def main():
     pygame.mixer.init()
     
     # Create window
+    # 1280x720
     screen = pygame.display.set_mode((settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT))
     pygame.display.set_caption(settings.TITLE)
     

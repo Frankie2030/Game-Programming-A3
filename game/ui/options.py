@@ -31,6 +31,13 @@ class OptionsState(GameState):
                 self._adjust_volume(0.1)
             elif event.key == pygame.K_ESCAPE or event.key == pygame.K_BACKSPACE:
                 self.stack.pop()
+            elif event.key == pygame.K_RETURN or event.key == pygame.K_SPACE:
+                # Handle Enter/Space key
+                if self.selected == 2:  # Back option
+                    self.stack.pop()
+                # For volume options, Enter/Space could also adjust volume
+                elif self.selected < 2:
+                    self._adjust_volume(0.1)  # Increase volume on Enter/Space
     
     def _adjust_volume(self, delta):
         """Adjust selected volume"""
@@ -89,6 +96,6 @@ class OptionsState(GameState):
         
         # Instructions
         inst_font = pygame.font.Font(None, 24)
-        inst = inst_font.render("Use Arrow Keys to adjust | ESC to go back", True, settings.COLOR_GRAY)
+        inst = inst_font.render("Arrow Keys: Navigate/Adjust | Enter/Space: Select | ESC: Back", True, settings.COLOR_GRAY)
         inst_rect = inst.get_rect(centerx=settings.SCREEN_WIDTH // 2, bottom=settings.SCREEN_HEIGHT - 50)
         screen.blit(inst, inst_rect)

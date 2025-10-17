@@ -24,7 +24,7 @@ from game.ui.hud import HUD
 class LevelState(GameState):
     """Main gameplay state"""
     
-    def __init__(self, stack):
+    def __init__(self, stack, save_data=None):
         super().__init__(stack)
         
         # Load level
@@ -42,23 +42,64 @@ class LevelState(GameState):
         # Audio
         self.audio = stack.persistent_data.get('audio')
         
-        # Spawn player
-        self.player = Player(level_data['spawn_x'], level_data['spawn_y'], self.audio)
+        # Spawn player (use save data if available)
+        if save_data:
+            player_data = save_data.get('player', {})
+            spawn_x = player_data.get('x', level_data['spawn_x'])
+            spawn_y = player_data.get('y', level_data['spawn_y'])
+            self.player = Player(spawn_x, spawn_y, self.audio)
+            # Restore player state
+            self.player.hp = player_data.get('hp', 3)
+            self.player.coins = player_data.get('coins', 0)
+            checkpoint_x = player_data.get('checkpoint_x', spawn_x)
+            checkpoint_y = player_data.get('checkpoint_y', spawn_y)
+            self.player.checkpoint_pos = (checkpoint_x, checkpoint_y)
+            self.player.gravity_dir = player_data.get('gravity_dir', 1)
+            self.player.stamina = player_data.get('stamina', 1.0)
+            self.player.powered_up = player_data.get('powered_up', False)
+            # Restore game time
+            self.stopwatch.set_time(save_data.get('progress', {}).get('game_time', 0))
+        else:
+            self.player = Player(level_data['spawn_x'], level_data['spawn_y'], self.audio)
         
         # Spawn coins
         self.coins = []
-        for pos in level_data['coins']:
-            self.coins.append(Coin(pos[0], pos[1]))
+        if save_data and 'entities' in save_data and 'coins' in save_data['entities']:
+            # Restore coins from save
+            for coin_data in save_data['entities']['coins']:
+                coin = Coin(coin_data['x'], coin_data['y'])
+                coin.collected = coin_data.get('collected', False)
+                self.coins.append(coin)
+        else:
+            # Spawn fresh coins
+            for pos in level_data['coins']:
+                self.coins.append(Coin(pos[0], pos[1]))
         
         # Spawn stars
         self.stars = []
-        for pos in level_data['stars']:
-            self.stars.append(FluxStar(pos[0], pos[1]))
+        if save_data and 'entities' in save_data and 'stars' in save_data['entities']:
+            # Restore stars from save
+            for star_data in save_data['entities']['stars']:
+                star = FluxStar(star_data['x'], star_data['y'])
+                star.collected = star_data.get('collected', False)
+                self.stars.append(star)
+        else:
+            # Spawn fresh stars
+            for pos in level_data['stars']:
+                self.stars.append(FluxStar(pos[0], pos[1]))
         
         # Spawn power-ups
         self.powerups = []
-        for pdata in level_data.get('powerups', []):
-            self.powerups.append(PowerUp(pdata['x'], pdata['y'], pdata['type']))
+        if save_data and 'entities' in save_data and 'powerups' in save_data['entities']:
+            # Restore power-ups from save
+            for pdata in save_data['entities']['powerups']:
+                powerup = PowerUp(pdata['x'], pdata['y'], pdata.get('type', 'speed'))
+                powerup.collected = pdata.get('collected', False)
+                self.powerups.append(powerup)
+        else:
+            # Spawn fresh power-ups
+            for pdata in level_data.get('powerups', []):
+                self.powerups.append(PowerUp(pdata['x'], pdata['y'], pdata['type']))
         
         # Spawn spikes
         self.spikes = []
@@ -67,8 +108,16 @@ class LevelState(GameState):
         
         # Spawn breakable blocks
         self.breakables = []
-        for bdata in level_data.get('breakables', []):
-            self.breakables.append(BreakableBlock(bdata['x'], bdata['y'], bdata['contents']))
+        if save_data and 'entities' in save_data and 'breakables' in save_data['entities']:
+            # Restore breakables from save
+            for bdata in save_data['entities']['breakables']:
+                block = BreakableBlock(bdata['x'], bdata['y'], bdata.get('contents'))
+                block.broken = bdata.get('broken', False)
+                self.breakables.append(block)
+        else:
+            # Spawn fresh breakables
+            for bdata in level_data.get('breakables', []):
+                self.breakables.append(BreakableBlock(bdata['x'], bdata['y'], bdata['contents']))
         
         # Spawn checkpoints
         self.checkpoints = []
@@ -77,17 +126,43 @@ class LevelState(GameState):
         
         # Spawn enemies
         self.enemies = []
-        for enemy_data in level_data['enemies']:
-            if enemy_data['type'] == 'drone':
-                color = enemy_data.get('color', 'blue')
-                drone = Drone(enemy_data['x'], enemy_data['y'],
-                            enemy_data['anchor'], enemy_data['range'], color)
-                self.enemies.append(drone)
+        if save_data and 'entities' in save_data and 'enemies' in save_data['entities']:
+            # Restore enemies from save
+            for i, enemy_data in enumerate(level_data['enemies']):
+                if enemy_data['type'] == 'drone':
+                    color = enemy_data.get('color', 'blue')
+                    drone = Drone(enemy_data['x'], enemy_data['y'],
+                                enemy_data['anchor'], enemy_data['range'], color)
+                    # Restore enemy state if available
+                    if i < len(save_data['entities']['enemies']):
+                        saved_enemy = save_data['entities']['enemies'][i]
+                        drone.alive = saved_enemy.get('alive', True)
+                    self.enemies.append(drone)
+        else:
+            # Spawn fresh enemies
+            for enemy_data in level_data['enemies']:
+                if enemy_data['type'] == 'drone':
+                    color = enemy_data.get('color', 'blue')
+                    drone = Drone(enemy_data['x'], enemy_data['y'],
+                                enemy_data['anchor'], enemy_data['range'], color)
+                    self.enemies.append(drone)
         
         # Spawn boss
         self.boss = GyroBoss(level_data['boss_x'], level_data['boss_y'])
         self.boss_active = False
         self.boss_door_open = False
+        
+        # Restore boss state if loading from save
+        if save_data and 'boss' in save_data:
+            boss_data = save_data['boss']
+            self.boss.hp = boss_data.get('hp', 8)
+            self.boss.max_hp = boss_data.get('max_hp', 8)
+            self.boss.alive = boss_data.get('alive', True)
+            self.boss.defeated = boss_data.get('defeated', False)
+            self.boss.phase = boss_data.get('phase', 'spin_up')
+            self.boss.vulnerable = boss_data.get('vulnerable', False)
+            self.boss_active = boss_data.get('boss_active', False)
+            self.boss_door_open = boss_data.get('boss_door_open', False)
         
         # Bullets
         self.bullets = []
@@ -97,6 +172,13 @@ class LevelState(GameState):
         
         # Clear conditions tracking
         self.clear_conditions = ClearConditions(len(self.enemies))
+        
+        # Restore clear conditions if loading from save
+        if save_data:
+            progress_data = save_data.get('progress', {})
+            enemies_defeated = progress_data.get('enemies_defeated', 0)
+            for _ in range(enemies_defeated):
+                self.clear_conditions.defeat_enemy()
         
         # Start timer
         self.stopwatch.start()
