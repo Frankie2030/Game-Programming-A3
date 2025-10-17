@@ -1,8 +1,10 @@
 """
 Pause menu
 """
+import math
 import pygame
 from game.core import GameState, settings
+from game.world.background import ParallaxBackground
 from game.core.save_system import SaveSystem
 
 
@@ -13,8 +15,16 @@ class PauseState(GameState):
         super().__init__(stack)
         self.options = ['Resume', 'Save & Exit', 'Exit Without Saving', 'Restart', 'Options', 'Main Menu']
         self.selected = 0
-        self.font = pygame.font.Font(None, 48)
-        self.small_font = pygame.font.Font(None, 24)
+        self.title_font = pygame.font.Font(None, 72)
+        self.menu_font = pygame.font.Font(None, 48)
+        self.small_font = pygame.font.Font(None, 20)
+        self.option_rects = []
+        self.mouse_enabled = True
+        self._pulse_time = 0.0
+        
+        # Animated background like main menu
+        self.background = ParallaxBackground(settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT)
+        self._bg_time = 0.0
     
     def enter(self, previous_state=None):
         """Pause music on enter"""
@@ -39,6 +49,16 @@ class PauseState(GameState):
                 self._select_option()
             elif event.key == pygame.K_ESCAPE:
                 self.stack.pop()  # Resume
+        elif event.type == pygame.MOUSEMOTION and self.mouse_enabled:
+            mx, my = event.pos
+            for i, rect in enumerate(self.option_rects):
+                if rect.collidepoint(mx, my):
+                    self.selected = i
+                    break
+        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.mouse_enabled:
+            mx, my = event.pos
+            if 0 <= self.selected < len(self.option_rects) and self.option_rects[self.selected].collidepoint(mx, my):
+                self._select_option()
     
     def _select_option(self):
         """Handle selection"""
@@ -129,33 +149,57 @@ class PauseState(GameState):
         self.stack.clear()
         self.stack.push(MainMenuState)
     
+    def update(self, dt, events):
+        """Animate background with gentle auto-scroll and sway (like main menu)."""
+        self._bg_time += dt
+        sway = math.sin(self._bg_time * 0.25) * 60
+        auto_scroll = self._bg_time * 30.0
+        self.background.update(auto_scroll + sway)
+        
+        # Pulse animation timer for selection highlight
+        self._pulse_time += dt
+
     def draw(self, screen):
-        """Draw pause menu"""
-        # Semi-transparent overlay
-        overlay = pygame.Surface((settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT))
-        overlay.set_alpha(180)
-        overlay.fill(settings.COLOR_BLACK)
+        """Draw pause menu styled like main menu"""
+        # Background + dim overlay
+        self.background.draw(screen)
+        overlay = pygame.Surface((settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 180))
         screen.blit(overlay, (0, 0))
-        
-        # Title
-        title = self.font.render("PAUSED", True, settings.COLOR_YELLOW)
-        title_rect = title.get_rect(centerx=settings.SCREEN_WIDTH // 2, y=150)
+
+        # Title with shadow
+        title_text = "PAUSED"
+        shadow = self.title_font.render(title_text, True, (0, 0, 0))
+        shadow_rect = shadow.get_rect(centerx=settings.SCREEN_WIDTH // 2 + 3, y=120)
+        screen.blit(shadow, shadow_rect)
+        title = self.title_font.render(title_text, True, settings.COLOR_YELLOW)
+        title_rect = title.get_rect(centerx=settings.SCREEN_WIDTH // 2, y=116)
         screen.blit(title, title_rect)
-        
-        # Options
-        start_y = 250
+
+        # Menu options with pulsing highlight
+        start_y = 230
+        # _pulse_time advanced in update
+        self.option_rects = []
         for i, option in enumerate(self.options):
             color = settings.COLOR_YELLOW if i == self.selected else settings.COLOR_WHITE
-            text = self.font.render(option, True, color)
-            rect = text.get_rect(centerx=settings.SCREEN_WIDTH // 2, y=start_y + i * 50)
-            screen.blit(text, rect)
-            
+            text = self.menu_font.render(option, True, color)
+            rect = text.get_rect(centerx=settings.SCREEN_WIDTH // 2, y=start_y + i * 56)
+
             if i == self.selected:
-                indicator = self.font.render(">", True, settings.COLOR_YELLOW)
+                pulse = (math.sin(self._pulse_time * 6.0) * 0.5 + 0.5)
+                highlight_alpha = int(80 + 70 * pulse)
+                pad_x, pad_y = 18, 8
+                highlight = pygame.Surface((rect.width + pad_x * 2, rect.height + pad_y * 2), pygame.SRCALPHA)
+                highlight.fill((255, 220, 50, highlight_alpha))
+                screen.blit(highlight, (rect.x - pad_x, rect.y - pad_y))
+
+            screen.blit(text, rect)
+            self.option_rects.append(rect)
+
+            if i == self.selected:
+                indicator = self.menu_font.render(">", True, settings.COLOR_YELLOW)
                 screen.blit(indicator, (rect.left - 50, rect.top))
-        
-        # Instructions
-        inst_text = "Arrow Keys: Navigate | Enter: Select | ESC: Resume"
-        inst_surf = self.small_font.render(inst_text, True, settings.COLOR_GRAY)
-        inst_rect = inst_surf.get_rect(centerx=settings.SCREEN_WIDTH // 2, bottom=settings.SCREEN_HEIGHT - 30)
-        screen.blit(inst_surf, inst_rect)
+
+        # Footer
+        footer = self.small_font.render("Enter/Click: Select   W/S or Up/Down: Navigate   Esc: Resume", True, settings.COLOR_WHITE)
+        screen.blit(footer, (20, settings.SCREEN_HEIGHT - 34))

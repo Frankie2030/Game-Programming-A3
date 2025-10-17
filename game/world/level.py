@@ -7,10 +7,12 @@ from game.core.clear_conditions import ClearConditions
 from game.world.camera import Camera
 from game.world.collisions import CollisionSystem
 from game.world.checkpoints import Checkpoint
+from game.world.background import ParallaxBackground
 from game.entities.player import Player
 from game.entities.coin import Coin
 from game.entities.star import FluxStar
 from game.entities.powerup import PowerUp
+from game.entities.storm import StormPowerup
 from game.entities.spikes import Spikes
 from game.entities.breakable import BreakableBlock
 from game.entities.enemy import Drone
@@ -35,9 +37,12 @@ class LevelState(GameState):
         self.collision_system = CollisionSystem(level_data['tile_map'])
         self.tile_map = level_data['tile_map']
         self.camera = Camera(settings.WORLD_WIDTH, settings.WORLD_HEIGHT)
+        self.background = ParallaxBackground(settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT)
         self.input_handler = InputHandler()
         self.hud = HUD()
         self.stopwatch = Stopwatch()
+        # Low-health effect timer
+        self.low_health_flash_timer = 0.0
         
         # Audio
         self.audio = stack.persistent_data.get('audio')
@@ -100,6 +105,22 @@ class LevelState(GameState):
             # Spawn fresh power-ups
             for pdata in level_data.get('powerups', []):
                 self.powerups.append(PowerUp(pdata['x'], pdata['y'], pdata['type']))
+        
+        # Spawn storm powerups
+        self.storms = []
+        if save_data and 'entities' in save_data and 'storms' in save_data['entities']:
+            # Restore storms from save
+            for storm_data in save_data['entities']['storms']:
+                storm = StormPowerup(storm_data['x'], storm_data['y'])
+                storm.collected = storm_data.get('collected', False)
+                self.storms.append(storm)
+        else:
+            # Spawn fresh storms
+            for pos in level_data.get('storms', []):
+                print(f"Loading storm at position: {pos}")  # Debug output
+                self.storms.append(StormPowerup(pos[0], pos[1]))
+        
+        print(f"Total storms loaded: {len(self.storms)}")  # Debug output
         
         # Spawn spikes
         self.spikes = []
@@ -185,7 +206,7 @@ class LevelState(GameState):
         
         # Start background music
         if self.audio:
-            self.audio.play_music('game/assets/audio/bgm/space-trip-114102.mp3')
+            self.audio.play_music('game/assets/public-assets/music/cyberpunk-street.ogg')
     
     def update(self, dt, events):
         """Update gameplay"""
@@ -205,12 +226,27 @@ class LevelState(GameState):
         # Update player
         self.player.update(dt, self.input_handler, self.collision_system)
         
-        # Spawn bullet if player is attacking
+        # Spawn bullet(s) if player is attacking
         if self.player.should_spawn_bullet():
             x, y = self.player.get_bullet_spawn_pos()
             direction = 1 if self.player.facing_right else -1
-            bullet = Bullet(x, y, direction, self.player.bullet_frames)
-            self.bullets.append(bullet)
+            
+            # Check if P powerup is active for triple bullets
+            if self.player.is_powerup_active():
+                # Spawn 3 bullets: center, up, down with more spacing
+                bullets_to_spawn = [
+                    (x, y, direction),  # Center bullet
+                    (x, y - 16, direction),  # Upper bullet (increased from 8 to 16)
+                    (x, y + 16, direction)   # Lower bullet (increased from 8 to 16)
+                ]
+            else:
+                # Normal single bullet
+                bullets_to_spawn = [(x, y, direction)]
+            
+            # Create bullets
+            for bullet_x, bullet_y, bullet_dir in bullets_to_spawn:
+                bullet = Bullet(bullet_x, bullet_y, bullet_dir, self.player.bullet_frames)
+                self.bullets.append(bullet)
         
         # Update bullets
         for bullet in self.bullets[:]:
@@ -237,7 +273,10 @@ class LevelState(GameState):
                             self.audio.play_sfx('boss_hit')
         
         # Update camera
-        self.camera.update(self.player.rect)
+        self.camera.update(self.player.rect, dt)
+        
+        # Update background
+        self.background.update(self.camera.x)
         
         # Update stopwatch
         self.stopwatch.update(dt)
@@ -263,6 +302,18 @@ class LevelState(GameState):
                 if self.audio:
                     self.audio.play_sfx('powerup')
         
+        # Update storm powerups
+        for storm in self.storms:
+            if storm.update(dt, self.player.rect):
+                print("Storm powerup collected!")  # Debug output
+                self._activate_storm_effect()
+                if self.audio:
+                    self.audio.play_sfx('powerup')
+        
+        # Update storm visual effect
+        if hasattr(self, 'storm_flash_timer') and self.storm_flash_timer > 0:
+            self.storm_flash_timer -= dt
+        
         # Update breakable blocks
         for block in self.breakables:
             block.update(dt)
@@ -279,11 +330,30 @@ class LevelState(GameState):
         
         # Check spike collisions
         for spike in self.spikes:
-            if spike.check_collision(self.player.rect, self.player.gravity_dir):
+            if spike.check_collision(self.player.rect, self.player.gravity_dir, self.stopwatch.get_time()):
                 if not self.player.is_invulnerable():
-                    if self.player.take_damage():
+                    previous_hp = self.player.hp
+                    if self.player.take_damage(camera=self.camera):
                         if self.audio:
                             self.audio.play_sfx('hit')
+                        # Trigger low-health overlay when dropping to 1 HP
+                        if previous_hp >= 2 and self.player.hp == 1:
+                            self.low_health_flash_timer = 0.35
+        
+        # Check if player is stuck on spikes (apply movement restrictions)
+        player_stuck_on_spikes = False
+        for spike in self.spikes:
+            if spike.is_player_stuck(self.player.rect, self.player.gravity_dir):
+                player_stuck_on_spikes = True
+                break
+        
+        # Apply sticky behavior - reduce movement speed when stuck on spikes
+        if player_stuck_on_spikes:
+            # Reduce horizontal movement speed significantly
+            self.player.vel_x *= 0.1  # Only 10% of normal speed
+            # Prevent jumping when stuck (make it harder to escape)
+            if self.player.vel_y < 0:  # If trying to jump
+                self.player.vel_y *= 0.3  # Reduce jump power
         
         # Update checkpoints
         for checkpoint in self.checkpoints:
@@ -311,9 +381,12 @@ class LevelState(GameState):
                 else:
                     # Not a stomp - hit player
                     if not self.player.is_invulnerable():
-                        if self.player.take_damage():
+                        previous_hp = self.player.hp
+                        if self.player.take_damage(camera=self.camera):
                             if self.audio:
                                 self.audio.play_sfx('hit')
+                            if previous_hp >= 2 and self.player.hp == 1:
+                                self.low_health_flash_timer = 0.35
         
         # Update boss
         if self.player.rect.right > self.boss.rect.left - 200:
@@ -324,9 +397,12 @@ class LevelState(GameState):
             
             # Check if boss lasers hit player
             if self.boss.check_hit_player(self.player.rect, self.player.is_invulnerable()):
-                if self.player.take_damage():
+                previous_hp = self.player.hp
+                if self.player.take_damage(camera=self.camera):
                     if self.audio:
                         self.audio.play_sfx('hit')
+                    if previous_hp >= 2 and self.player.hp == 1:
+                        self.low_health_flash_timer = 0.35
             
             # Check if player hits boss during vulnerable phase
             if self.boss.vulnerable and self.player.rect.colliderect(self.boss.rect):
@@ -349,7 +425,7 @@ class LevelState(GameState):
                 self.clear_conditions.defeat_boss()
         
         # Check win condition
-        if self.boss_door_open and self.player.rect.x > settings.WORLD_WIDTH - 100:
+        if self.boss_door_open and self.boss.defeated and self.player.rect.x > settings.WORLD_WIDTH - 100:
             from game.ui.win import WinState
             self.clear_conditions.set_completion_time(self.stopwatch.get_time())
             self.stack.replace(WinState, 
@@ -374,7 +450,8 @@ class LevelState(GameState):
     
     def draw(self, screen):
         """Draw level"""
-        screen.fill((20, 20, 30))  # Dark blue background
+        # Draw parallax background
+        self.background.draw(screen)
         
         # Draw tiles
         for row in self.tile_map:
@@ -437,8 +514,83 @@ class LevelState(GameState):
             debug_rect.y -= self.camera.y
             pygame.draw.rect(screen, (0, 255, 0), debug_rect, 2)
         
+        # Draw storms
+        for storm in self.storms:
+            storm.draw(screen, self.camera)
+        
+        # Low-health flash overlay when HP just dropped to 1
+        if self.low_health_flash_timer > 0:
+            self.low_health_flash_timer = max(0.0, self.low_health_flash_timer - (1.0 / settings.FPS))
+            overlay = pygame.Surface((settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT), pygame.SRCALPHA)
+            # Fade out alpha
+            alpha = int(180 * (self.low_health_flash_timer / 0.35))
+            overlay.fill((220, 30, 30, alpha))
+            screen.blit(overlay, (0, 0))
+
+        # Draw storm flash effect
+        if hasattr(self, 'storm_flash_timer') and self.storm_flash_timer > 0:
+            # Create a white flash overlay
+            flash_surf = pygame.Surface((settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT), pygame.SRCALPHA)
+            alpha = int(255 * (self.storm_flash_timer / 0.5))  # Fade out over 0.5 seconds
+            flash_surf.fill((255, 255, 255, alpha))
+            screen.blit(flash_surf, (0, 0))
+        
         # Draw HUD
         boss_to_draw = self.boss if self.boss_active else None
+        # Prepare entities for minimap overlay
+        minimap_entities = {
+            'bullets': self.bullets,
+            'coins': self.coins,
+            'stars': self.stars,
+            'powerups': self.powerups,
+            'storms': self.storms,
+            'enemies': self.enemies,
+        }
+        
         self.hud.draw(screen, self.player, boss=boss_to_draw, show_fps=True, 
                      fps=self.stack.persistent_data.get('fps', 60), show_hitboxes=self.show_hitboxes,
-                     clear_conditions=self.clear_conditions, game_time=self.stopwatch.get_time())
+                     clear_conditions=self.clear_conditions, game_time=self.stopwatch.get_time(), camera=self.camera,
+                     minimap_entities=minimap_entities)
+    
+    def _activate_storm_effect(self):
+        """Activate storm effect - clear enemies in large radius"""
+        print("Storm effect activated!")  # Debug output
+        
+        # Add visual flash effect
+        self.storm_flash_timer = 0.5  # Flash for 0.5 seconds
+        
+        # Calculate storm radius - INCREASED to 50% of screen height for better effect
+        storm_radius = int(settings.SCREEN_HEIGHT * 0.5)  # 360 pixels (was 144)
+        print(f"Storm radius: {storm_radius} pixels")  # Debug output
+        
+        # Get player position
+        player_center = self.player.rect.center
+        print(f"Player position: {player_center}")  # Debug output
+        
+        # Debug: Show all enemies and their distances
+        print(f"Total enemies: {len(self.enemies)}")
+        for i, enemy in enumerate(self.enemies):
+            if enemy.alive:
+                enemy_center = enemy.rect.center
+                distance = ((player_center[0] - enemy_center[0]) ** 2 + 
+                           (player_center[1] - enemy_center[1]) ** 2) ** 0.5
+                print(f"Enemy {i}: pos={enemy_center}, distance={distance:.1f}, within_radius={distance <= storm_radius}")
+        
+        # Clear enemies within storm radius
+        enemies_cleared = 0
+        for enemy in self.enemies[:]:  # Use slice to avoid modification during iteration
+            if enemy.alive:
+                # Calculate distance from player to enemy
+                enemy_center = enemy.rect.center
+                distance = ((player_center[0] - enemy_center[0]) ** 2 + 
+                           (player_center[1] - enemy_center[1]) ** 2) ** 0.5
+                
+                if distance <= storm_radius:
+                    # Enemy is within storm radius - defeat it
+                    print(f"Clearing enemy at distance {distance:.1f}")  # Debug output
+                    enemy.alive = False
+                    enemies_cleared += 1
+                    self.clear_conditions.defeat_enemy()
+        
+        # Visual feedback - could add screen flash or particles here
+        print(f"Storm cleared {enemies_cleared} enemies!")

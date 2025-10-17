@@ -127,6 +127,15 @@ class LevelLoader:
             y = row * settings.TILE_SIZE + settings.TILE_SIZE // 2 - 12
             powerups.append({'x': x, 'y': y, 'type': ptype})
         
+        # Storm powerups
+        storms = []
+        for pos in entities_data.get('storm', []):
+            col, row = pos[0], pos[1]
+            x = col * settings.TILE_SIZE + settings.TILE_SIZE // 2 - 12
+            y = row * settings.TILE_SIZE + settings.TILE_SIZE // 2 - 12
+            print(f"Level loader: Adding storm at ({x}, {y})")  # Debug output
+            storms.append((x, y))
+        
         # Spikes
         spikes = []
         for pos in entities_data.get('spikes', []):
@@ -149,8 +158,9 @@ class LevelLoader:
         checkpoints = []
         for pos in entities_data.get('checkpoint', []):
             col, row = pos[0], pos[1]
-            x = col * settings.TILE_SIZE
-            y = row * settings.TILE_SIZE
+            # Center the checkpoint on the tile and place it on the ground
+            x = col * settings.TILE_SIZE + settings.TILE_SIZE // 2 - 8  # 8 = half of checkpoint width (16)
+            y = row * settings.TILE_SIZE - 48  # Position flag pole on the ground (48 = checkpoint height)
             checkpoints.append((x, y))
         
         # Enemies
@@ -193,6 +203,7 @@ class LevelLoader:
             'coins': coins,
             'stars': stars,
             'powerups': powerups,
+            'storms': storms,
             'spikes': spikes,
             'breakables': breakables,
             'enemies': enemies
