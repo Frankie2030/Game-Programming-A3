@@ -32,6 +32,7 @@ class Player:
         self.hp = settings.PLAYER_HP
         self.invuln_timer = Timer()
         self.flux_surge_timer = Timer()
+        self.powerup_timer = Timer()  # Timer for powerup invincibility
         self.powered_up = False  # Collected a power-up
         
         # Stamina system
@@ -141,6 +142,7 @@ class Player:
         self.jump_buffer.update(dt)
         self.invuln_timer.update(dt)
         self.flux_surge_timer.update(dt)
+        self.powerup_timer.update(dt)
         self.attack_timer.update(dt)
         
         # Handle stamina
@@ -281,6 +283,15 @@ class Player:
         
         # Move horizontally
         self.rect.x += self.vel_x * dt
+        
+        # Check world boundaries
+        if self.rect.left < 0:
+            self.rect.left = 0
+            self.vel_x = 0
+        elif self.rect.right > settings.WORLD_WIDTH:
+            self.rect.right = settings.WORLD_WIDTH
+            self.vel_x = 0
+        
         # Check horizontal collisions
         collisions = collision_system.get_tile_collisions(self.rect, self.gravity_dir)
         for tile_rect in collisions:
@@ -292,6 +303,15 @@ class Player:
         
         # Move vertically
         self.rect.y += self.vel_y * dt
+        
+        # Check world boundaries
+        if self.rect.top < 0:
+            self.rect.top = 0
+            self.vel_y = 0
+        elif self.rect.bottom > settings.WORLD_HEIGHT:
+            self.rect.bottom = settings.WORLD_HEIGHT
+            self.vel_y = 0
+        
         # Check vertical collisions
         collisions = collision_system.get_tile_collisions(self.rect, self.gravity_dir)
         for tile_rect in collisions:
@@ -318,13 +338,26 @@ class Player:
                     self.rect.bottom = tile_rect.top
                     self.vel_y = 0
     
-    def take_damage(self, amount=1):
+    def take_damage(self, amount=1, camera=None):
         """Take damage if not invulnerable"""
+        print(f"DEBUG: take_damage called with amount={amount}, camera={camera is not None}, current_hp={self.hp}")
+        
         if self.invuln_timer.is_active() or self.flux_surge_timer.is_active():
+            print("DEBUG: Player is invulnerable, damage blocked")
             return False
+        
+        # Store previous health to check if we're dropping to 1
+        previous_hp = self.hp
         
         self.hp -= amount
         self.invuln_timer.start(settings.PLAYER_INVULN_TIME)
+        
+        print(f"DEBUG: Damage taken! Previous HP: {previous_hp}, New HP: {self.hp}")
+        
+        # Trigger camera shake if health drops to 1 (from 2 or higher)
+        if camera and previous_hp >= 2 and self.hp == 1:
+            print(f"DEBUG: Camera shake triggered! Previous HP: {previous_hp}, Current HP: {self.hp}")
+            camera.shake()
         
         if self.hp <= 0:
             self.alive = False
@@ -342,7 +375,7 @@ class Player:
     def activate_powerup(self):
         """Activate general power-up"""
         self.powered_up = True
-        # Could add other effects here
+        self.powerup_timer.start(settings.POWERUP_INVULN_DURATION)
     
     def set_checkpoint(self, pos):
         """Set respawn checkpoint"""
@@ -368,7 +401,7 @@ class Player:
     
     def is_invulnerable(self):
         """Check if player is currently invulnerable"""
-        return self.invuln_timer.is_active() or self.flux_surge_timer.is_active()
+        return self.invuln_timer.is_active() or self.flux_surge_timer.is_active() or self.powerup_timer.is_active()
     
     def is_flux_surge_active(self):
         """Check if Flux Surge is active"""
@@ -377,6 +410,14 @@ class Player:
     def get_flux_surge_time_left(self):
         """Get remaining Flux Surge time"""
         return self.flux_surge_timer.time_left if self.flux_surge_timer.is_active() else 0
+    
+    def is_powerup_active(self):
+        """Check if powerup invincibility is active"""
+        return self.powerup_timer.is_active()
+    
+    def get_powerup_time_left(self):
+        """Get remaining powerup time"""
+        return self.powerup_timer.time_left if self.powerup_timer.is_active() else 0
     
     def get_stamina(self):
         """Get current stamina as a percentage (0.0 to 1.0)"""
@@ -440,6 +481,12 @@ class Player:
                 glow_surf = pygame.Surface((self.rect.width + 16, self.rect.height + 16), pygame.SRCALPHA)
                 pygame.draw.circle(glow_surf, (255, 255, 100, 80), (self.rect.width // 2 + 8, self.rect.height // 2 + 8), self.rect.width // 2 + 8)
                 screen.blit(glow_surf, (draw_rect.centerx - self.rect.width // 2 - 8, draw_rect.centery - self.rect.height // 2 - 8))
+            
+            # Add glow if powerup invincibility is active
+            if self.powerup_timer.is_active():
+                glow_surf = pygame.Surface((self.rect.width + 20, self.rect.height + 20), pygame.SRCALPHA)
+                pygame.draw.circle(glow_surf, (100, 255, 100, 100), (self.rect.width // 2 + 10, self.rect.height // 2 + 10), self.rect.width // 2 + 10)
+                screen.blit(glow_surf, (draw_rect.centerx - self.rect.width // 2 - 10, draw_rect.centery - self.rect.height // 2 - 10))
             
             # Position the sprite relative to the collision box
             sprite_rect = sprite_scaled.get_rect(center=self.rect.center)
