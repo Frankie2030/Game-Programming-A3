@@ -210,8 +210,6 @@ class Player:
                 self.stamina_exhausted = True
                 # Lock manual gravity flip until stamina fully refills
                 self.flip_locked_until_full = True
-                # Auto-trigger a gravity flip once when stamina depletes
-                self._trigger_gravity_flip()
     
     def _handle_attack(self, input_handler):
         """Handle attack input"""
