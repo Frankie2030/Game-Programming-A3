@@ -3,14 +3,14 @@
     1,
     2
   ],
-  "current_level": 1,
+  "current_level": 2,
   "levels": {
     "1": {
       "completed": true,
-      "attempts": 1,
-      "best_time": 297.4919999999507,
-      "best_coins": 57,
-      "best_enemies_defeated": 31
+      "attempts": 0,
+      "best_time": 35.51999999999916,
+      "best_coins": 12,
+      "best_enemies_defeated": 3
     },
     "2": {
       "completed": false,
@@ -19,5 +19,334 @@
       "best_coins": 0,
       "best_enemies_defeated": 0
     }
+  },
+  "game_state": {
+    "player": {
+      "x": 1392,
+      "y": 608,
+      "hp": 4,
+      "coins": 4,
+      "checkpoint_x": 964,
+      "checkpoint_y": 608,
+      "gravity_dir": 1,
+      "stamina": 0.6916000000000107,
+      "double_shot": true,
+      "stamina_boost": false,
+      "flux_surge_active": false
+    },
+    "level": {
+      "level_id": 1,
+      "spawn_x": 64,
+      "spawn_y": 576
+    },
+    "game_time": 26.968999999999223,
+    "coins_collected": 4,
+    "enemies_defeated": 3,
+    "boss": {
+      "hp": 10,
+      "max_hp": 10,
+      "alive": true,
+      "defeated": false,
+      "phase": "spin_up",
+      "vulnerable": false,
+      "boss_active": false,
+      "boss_door_open": false
+    },
+    "entities": {
+      "coins": [
+        {
+          "x": 328,
+          "y": 584,
+          "collected": true
+        },
+        {
+          "x": 360,
+          "y": 584,
+          "collected": true
+        },
+        {
+          "x": 392,
+          "y": 584,
+          "collected": true
+        },
+        {
+          "x": 648,
+          "y": 456,
+          "collected": false
+        },
+        {
+          "x": 680,
+          "y": 456,
+          "collected": false
+        },
+        {
+          "x": 712,
+          "y": 456,
+          "collected": false
+        },
+        {
+          "x": 968,
+          "y": 392,
+          "collected": false
+        },
+        {
+          "x": 1000,
+          "y": 392,
+          "collected": false
+        },
+        {
+          "x": 1032,
+          "y": 392,
+          "collected": false
+        },
+        {
+          "x": 1288,
+          "y": 328,
+          "collected": false
+        },
+        {
+          "x": 1320,
+          "y": 328,
+          "collected": false
+        },
+        {
+          "x": 1352,
+          "y": 328,
+          "collected": false
+        },
+        {
+          "x": 1608,
+          "y": 264,
+          "collected": false
+        },
+        {
+          "x": 1640,
+          "y": 264,
+          "collected": false
+        },
+        {
+          "x": 1672,
+          "y": 264,
+          "collected": false
+        },
+        {
+          "x": 1928,
+          "y": 584,
+          "collected": false
+        },
+        {
+          "x": 1960,
+          "y": 584,
+          "collected": false
+        },
+        {
+          "x": 1992,
+          "y": 584,
+          "collected": false
+        },
+        {
+          "x": 2248,
+          "y": 488,
+          "collected": false
+        },
+        {
+          "x": 2280,
+          "y": 488,
+          "collected": false
+        },
+        {
+          "x": 2312,
+          "y": 488,
+          "collected": false
+        },
+        {
+          "x": 2568,
+          "y": 392,
+          "collected": false
+        },
+        {
+          "x": 2600,
+          "y": 392,
+          "collected": false
+        },
+        {
+          "x": 2632,
+          "y": 392,
+          "collected": false
+        },
+        {
+          "x": 2888,
+          "y": 584,
+          "collected": false
+        },
+        {
+          "x": 2920,
+          "y": 584,
+          "collected": false
+        },
+        {
+          "x": 2952,
+          "y": 584,
+          "collected": false
+        },
+        {
+          "x": 3208,
+          "y": 488,
+          "collected": false
+        },
+        {
+          "x": 3240,
+          "y": 488,
+          "collected": false
+        },
+        {
+          "x": 3272,
+          "y": 488,
+          "collected": false
+        },
+        {
+          "x": 3528,
+          "y": 584,
+          "collected": false
+        },
+        {
+          "x": 3560,
+          "y": 584,
+          "collected": false
+        },
+        {
+          "x": 3592,
+          "y": 584,
+          "collected": false
+        },
+        {
+          "x": 648,
+          "y": 556,
+          "collected": true
+        }
+      ],
+      "stars": [
+        {
+          "x": 964,
+          "y": 164,
+          "collected": false
+        },
+        {
+          "x": 1604,
+          "y": 164,
+          "collected": false
+        },
+        {
+          "x": 2884,
+          "y": 164,
+          "collected": false
+        }
+      ],
+      "powerups": [
+        {
+          "x": 804,
+          "y": 324,
+          "collected": false,
+          "type": "speed"
+        },
+        {
+          "x": 1444,
+          "y": 324,
+          "collected": false,
+          "type": "speed"
+        },
+        {
+          "x": 2244,
+          "y": 324,
+          "collected": false,
+          "type": "speed"
+        },
+        {
+          "x": 1284,
+          "y": 546,
+          "collected": true,
+          "type": "speed"
+        }
+      ],
+      "enemies": [
+        {
+          "x": 711,
+          "y": 608,
+          "alive": false
+        },
+        {
+          "x": 1319,
+          "y": 608,
+          "alive": false
+        },
+        {
+          "x": 1935,
+          "y": 608,
+          "alive": true
+        },
+        {
+          "x": 2577,
+          "y": 608,
+          "alive": true
+        },
+        {
+          "x": 3284,
+          "y": 608,
+          "alive": true
+        },
+        {
+          "x": 1002,
+          "y": 128,
+          "alive": false
+        },
+        {
+          "x": 1666,
+          "y": 128,
+          "alive": true
+        },
+        {
+          "x": 2293,
+          "y": 128,
+          "alive": true
+        },
+        {
+          "x": 2995,
+          "y": 128,
+          "alive": true
+        },
+        {
+          "x": 3535,
+          "y": 128,
+          "alive": true
+        }
+      ],
+      "breakables": [
+        {
+          "x": 640,
+          "y": 576,
+          "broken": true,
+          "contents": "coin"
+        },
+        {
+          "x": 1280,
+          "y": 576,
+          "broken": true,
+          "contents": "powerup"
+        },
+        {
+          "x": 2560,
+          "y": 576,
+          "broken": false,
+          "contents": "coin"
+        },
+        {
+          "x": 1600,
+          "y": 576,
+          "broken": false,
+          "contents": null
+        }
+      ]
+    },
+    "timestamp": "2025-10-24T22:23:29.763617"
   }
 }
