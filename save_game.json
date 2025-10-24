@@ -1,0 +1,23 @@
+{
+  "unlocked_levels": [
+    1,
+    2
+  ],
+  "current_level": 1,
+  "levels": {
+    "1": {
+      "completed": true,
+      "attempts": 1,
+      "best_time": 297.4919999999507,
+      "best_coins": 57,
+      "best_enemies_defeated": 31
+    },
+    "2": {
+      "completed": false,
+      "attempts": 2,
+      "best_time": null,
+      "best_coins": 0,
+      "best_enemies_defeated": 0
+    }
+  }
+}

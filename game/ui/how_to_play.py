@@ -105,8 +105,8 @@ class HowToPlayState(GameState):
         controls = [
             ("A / D or Arrow Keys", "Move left / right"),
             ("W or Up", "Jump (buffers input, works with coyote time)"),
-            ("SPACE", "Flip gravity (cooldown: 0.25s)"),
-            ("J / X / Ctrl", "Attack (shoot bullets)"),
+            ("E", "Flip gravity (cooldown: 0.25s)"),
+            ("Space", "Attack (shoot bullets)"),
             ("ESC", "Pause / Back to menu"),
             ("M", "Mute / Unmute audio")
         ]
