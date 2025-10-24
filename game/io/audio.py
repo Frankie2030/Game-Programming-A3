@@ -8,12 +8,29 @@ import os
 class AudioManager:
     """Manages BGM and SFX playback"""
     
+    # Music file paths
+    MUSIC_MENU = 'game/assets/audio/bgm/space-trip-114102.mp3'
+    MUSIC_GAME = 'game/assets/audio/bgm/cyberpunk-street.wav'
+    MUSIC_BOSS = 'game/assets/audio/bgm/The Last Encounter Medium Loop.wav'
+    
+    # SFX file paths
+    SFX_BUMP = 'game/assets/audio/sfx/bump.ogg'
+    SFX_STOMP = 'game/assets/audio/sfx/stomp.ogg'
+    SFX_COIN = 'game/assets/audio/sfx/coin.ogg'
+    SFX_POWERUP = 'game/assets/audio/sfx/powerup.ogg'
+    SFX_GAME_OVER = 'game/assets/audio/sfx/game-over-39-199830.mp3'
+    
     def __init__(self):
         pygame.mixer.init()
         
         # Volume settings (0.0 to 1.0)
         self.music_volume = 0.7
         self.sfx_volume = 0.8
+        
+        # Mute state
+        self._is_muted = False
+        self._previous_music_volume = self.music_volume
+        self._previous_sfx_volume = self.sfx_volume
         
         # Sound effects cache
         self.sfx_cache = {}
@@ -80,3 +97,49 @@ class AudioManager:
     def get_sfx_volume(self):
         """Get current SFX volume"""
         return self.sfx_volume
+    
+    def load_all_audio(self):
+        """Pre-load all necessary music and SFX at game startup"""
+        # Load SFX
+        self.load_sfx('bump', self.SFX_BUMP)
+        self.load_sfx('stomp', self.SFX_STOMP)
+        self.load_sfx('coin', self.SFX_COIN)
+        self.load_sfx('powerup', self.SFX_POWERUP)
+        self.load_sfx('game_over', self.SFX_GAME_OVER)
+        
+        # Load placeholder SFX for sounds we don't have files for yet
+        placeholder_sfx = ['jump', 'gravity_flip', 'hit', 'enemy_defeat', 
+                          'boss_hit', 'star', 'checkpoint', 'pause', 'confirm']
+        for sfx in placeholder_sfx:
+            self.sfx_cache[sfx] = None  # Placeholder
+    
+    def stop_all_audio(self):
+        """Stop all audio (music and SFX)"""
+        self.stop_music()
+        # Stop all SFX channels
+        pygame.mixer.stop()
+    
+    def toggle_mute(self):
+        """Toggle mute state for all audio"""
+        if self._is_muted:
+            # Unmute: restore previous volumes
+            self.music_volume = self._previous_music_volume
+            self.sfx_volume = self._previous_sfx_volume
+            self._is_muted = False
+        else:
+            # Mute: store current volumes and set to 0
+            self._previous_music_volume = self.music_volume
+            self._previous_sfx_volume = self.sfx_volume
+            self.music_volume = 0.0
+            self.sfx_volume = 0.0
+            self._is_muted = True
+        
+        # Apply volume changes
+        pygame.mixer.music.set_volume(self.music_volume)
+        for sound in self.sfx_cache.values():
+            if sound:
+                sound.set_volume(self.sfx_volume)
+    
+    def is_muted(self):
+        """Check if audio is currently muted"""
+        return self._is_muted

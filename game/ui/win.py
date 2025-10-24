@@ -9,12 +9,21 @@ from game.core import GameState, settings
 class WinState(GameState):
     """Enhanced victory screen with animations and modern design"""
     
-    def __init__(self, stack, coins=0, time=0, clear_conditions=None):
+    def __init__(self, stack, coins=0, time=0, clear_conditions=None, level_id=1):
         super().__init__(stack)
         self.coins = coins
         self.time = time
         self.clear_conditions = clear_conditions
         self.stars = clear_conditions.get_star_rating() if clear_conditions else 1
+        self.level_id = level_id
+        self.has_next_level = level_id < 2  # Currently only 2 levels
+        
+        # Button states
+        self.selected_button = 0  # 0 = Next Level, 1 = Exit
+        self.buttons = []
+        if self.has_next_level:
+            self.buttons.append('next_level')
+        self.buttons.append('exit')
         
         # Fonts
         self.title_font = pygame.font.Font(None, 84)
@@ -33,6 +42,12 @@ class WinState(GameState):
         
         # Create decorative elements
         self.create_decorative_elements()
+    
+    def enter(self, previous_state=None):
+        """Called when entering this state"""
+        audio = self.stack.persistent_data.get('audio')
+        if audio:
+            audio.play_music(audio.MUSIC_MENU)
     
     def create_decorative_elements(self):
         """Create visual elements for better design"""
@@ -97,10 +112,43 @@ class WinState(GameState):
     def handle_event(self, event):
         """Handle input"""
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_RETURN or event.key == pygame.K_SPACE or event.key == pygame.K_ESCAPE:
-                from game.ui.main_menu import MainMenuState
-                self.stack.clear()
-                self.stack.push(MainMenuState)
+            if event.key == pygame.K_UP or event.key == pygame.K_w:
+                self.selected_button = (self.selected_button - 1) % len(self.buttons)
+            elif event.key == pygame.K_DOWN or event.key == pygame.K_s:
+                self.selected_button = (self.selected_button + 1) % len(self.buttons)
+            elif event.key == pygame.K_RETURN or event.key == pygame.K_SPACE:
+                self._handle_button_action()
+            elif event.key == pygame.K_ESCAPE:
+                self._exit_to_menu()
+    
+    def _handle_button_action(self):
+        """Handle button selection"""
+        selected = self.buttons[self.selected_button]
+        
+        if selected == 'next_level':
+            # Save level completion and unlock next level
+            from game.core.save_system import SaveSystem
+            defeated, total = self.clear_conditions.get_enemies_progress()
+            SaveSystem.complete_level(self.level_id, self.time, self.coins, defeated)
+            
+            # Load next level fresh with transition
+            from game.world.level import LevelState
+            # Clear all states and load next level with transition
+            self.stack.clear_and_push_with_transition(LevelState, level_id=self.level_id + 1)
+        elif selected == 'exit':
+            self._exit_to_menu()
+    
+    def _exit_to_menu(self):
+        """Exit to main menu with auto-save"""
+        # Save level completion
+        from game.core.save_system import SaveSystem
+        defeated, total = self.clear_conditions.get_enemies_progress()
+        SaveSystem.complete_level(self.level_id, self.time, self.coins, defeated)
+        
+        # Return to menu with transition
+        from game.ui.main_menu import MainMenuState
+        # Clear all states and return to menu with transition
+        self.stack.clear_and_push_with_transition(MainMenuState)
     
     def draw_animated_stars(self, screen, x, y, earned_stars):
         """Draw animated star rating"""
@@ -237,10 +285,39 @@ class WinState(GameState):
             message_rect = message.get_rect(centerx=settings.SCREEN_WIDTH // 2, y=580)
             screen.blit(message, message_rect)
         
-        # Continue instruction with pulse
-        continue_text = self.instruction_font.render("Press ENTER to continue", True, (self.pulse_alpha, self.pulse_alpha, self.pulse_alpha))
-        continue_rect = continue_text.get_rect(centerx=settings.SCREEN_WIDTH // 2, bottom=settings.SCREEN_HEIGHT - 30)
-        screen.blit(continue_text, continue_rect)
+        # Draw buttons
+        button_y_start = settings.SCREEN_HEIGHT - 120
+        for i, button in enumerate(self.buttons):
+            button_y = button_y_start + i * 50
+            
+            # Button text
+            if button == 'next_level':
+                button_text = f"Next Level (Level {self.level_id + 1})"
+            elif button == 'exit':
+                button_text = "Exit to Menu"
+            
+            # Button colors based on selection
+            if i == self.selected_button:
+                text_color = settings.COLOR_YELLOW
+                bg_color = (60, 60, 20)
+            else:
+                text_color = settings.COLOR_WHITE
+                bg_color = (20, 20, 20)
+            
+            # Draw button background
+            button_rect = pygame.Rect(settings.SCREEN_WIDTH // 2 - 150, button_y - 20, 300, 40)
+            pygame.draw.rect(screen, bg_color, button_rect)
+            pygame.draw.rect(screen, text_color, button_rect, 2)
+            
+            # Draw button text
+            text_surf = self.subtitle_font.render(button_text, True, text_color)
+            text_rect = text_surf.get_rect(center=(settings.SCREEN_WIDTH // 2, button_y))
+            screen.blit(text_surf, text_rect)
+        
+        # Navigation instruction with pulse
+        nav_text = self.instruction_font.render("Use UP/DOWN to select, ENTER to confirm, ESC to exit", True, (self.pulse_alpha, self.pulse_alpha, self.pulse_alpha))
+        nav_rect = nav_text.get_rect(centerx=settings.SCREEN_WIDTH // 2, bottom=settings.SCREEN_HEIGHT - 15)
+        screen.blit(nav_text, nav_rect)
         
         # Decorative corner elements
         corner_size = 30

@@ -1,19 +1,15 @@
 # TODO
+- t có thấy mục 5 đề bảo là looping BGM per level --> nên t nghĩ cần có >= 2 level, nên nghĩ scenario cho con boss típ theo --> maybe screen size vẫn như bình thường nhưng giờ có 2 con boss và nó di chuyển chứ kh đứng im --> t nghĩ nên hay hơn chứ con boss đó t cũng chưa hỉu lắm vì hiện tại t thấy khi t bắn cục tròn giữa thì lúc thì boss mất máu, lúc thì boss kh mất máu --> những cánh quạt con boss thì nó làm user mất máu nhưng t nghĩ nếu vẫn giữ boss đó thì nên cho nó chắn đạn nữa cx ok ==> MAYBE các màn sau boss khác cũng đc, bây define đi --> suggest nên có 1 transition screen giữa các màn kiểu z --> maybe trước khi vào màn nó có 1 màn hình bảo là màn mấy rồi đếm ngược 3 2 1 ==> **DONE**
 
-- hit boss con boss tròn tròn quay kia đang chưa đúng thì phải thấy dính vòng tròn nhưng kh mất máu --> hiện tại khôi nó bảo thì khi con boss nó hết đỏ thì nhảy vào đầu nó :3
+- [BONUS] t nghĩ mình làm 1 cái như vầy thì ăn đc mục bonus thứ 2: màn 2 chẳn hạn, đang di chuyển thì có 1 bức tường chặn nên cho dù có flip cũng kh qua đc --> force user nhảy hoặc bay lên ấn 1 nút để 1 thanh chẳn ngang cầu rơi xuống --> làm cầu bắc qua 1 con sông chẳn hạn --> user rớt xong là dead luôn chứ kh chỉ trừ máu => **DONE but in other way**
 
-- FUN FACT t nghĩ 2 bài trc mình làm ổn demo ok là do có mode debug lúc nào cx bật, bài này cũng nên có mode debug, hiện hitbox...
+- [BONUS] mục remappable keys t đang chưa hỉu --> ý thầy là cho user set up key nào functions gì chăn --> nếu hỉu đúng ý này thì maybe mình cho user chỉnh tự do trong a -> z là ok --> trong settings  => **DONE**
 
-- t có thấy mục 5 đề bảo là looping BGM per level --> nên t nghĩ cần có >= 2 level, nên nghĩ scenario cho con boss típ theo --> maybe screen size vẫn như bình thường nhưng giờ có 2 con boss và nó di chuyển chứ kh đứng im --> t nghĩ nên hay hơn chứ con boss đó t cũng chưa hỉu lắm vì hiện tại t thấy khi t bắn cục tròn giữa thì lúc thì boss mất máu, lúc thì boss kh mất máu --> những cánh quạt con boss thì nó làm user mất máu nhưng t nghĩ nếu vẫn giữ boss đó thì nên cho nó chắn đạn nữa cx ok ==> MAYBE các màn sau boss khác cũng đc, bây define đi --> suggest nên có 1 transition screen giữa các màn kiểu z --> maybe trước khi vào màn nó có 1 màn hình bảo là màn mấy rồi đếm ngược 3 2 1
-
-- [BONUS] t nghĩ mình làm 1 cái như vầy thì ăn đc mục bonus thứ 2: màn 2 chẳn hạn, đang di chuyển thì có 1 bức tường chặn nên cho dù có flip cũng kh qua đc --> force user nhảy hoặc bay lên ấn 1 nút để 1 thanh chẳn ngang cầu rơi xuống --> làm cầu bắc qua 1 con sông chẳn hạn --> user rớt xong là dead luôn chứ kh chỉ trừ máu 
-
-- [BONUS] mục remappable keys t đang chưa hỉu --> ý thầy là cho user set up key nào functions gì chăn --> nếu hỉu đúng ý này thì maybe mình cho user chỉnh tự do trong a -> z là ok --> trong settings  
-
+- Make background more dim => **DONE**
 
 # CONCERN (t chưa đọc detail code nên mới có mục này)
 
-- đề có bảo về gravity --> khi t flip t thấy cảm giác nó bay lên hoặc rơi xuống đều quá, t nghĩ nó phải rơi nhanh dần hoặc bay lên chậm từ từ hay sao đó chứ nhỉ 
+- đề có bảo về gravity --> khi t flip t thấy cảm giác nó bay lên hoặc rơi xuống đều quá, t nghĩ nó phải rơi nhanh dần hoặc bay lên chậm từ từ hay sao đó chứ nhỉ => **t nghi chac ko sao dau**
 
 
 # IN PROGRESS

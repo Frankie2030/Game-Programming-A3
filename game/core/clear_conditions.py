@@ -28,19 +28,15 @@ class ClearConditions:
     
     def get_star_rating(self):
         """Calculate star rating based on conditions"""
-        stars = 0
-        
-        # 1 star: Defeat boss (mandatory)
-        if self.boss_defeated:
-            stars = 1
+        stars = 1
             
-            # 2 stars: Defeat all enemies
-            if self.enemies_defeated >= self.total_enemies:
-                stars = 2
-                
-                # 3 stars: Complete within time limit
-                if self.completion_time <= settings.TIME_LIMIT_3_STAR:
-                    stars = 3
+        # 2 stars: Defeat all enemies
+        if self.enemies_defeated >= self.total_enemies:
+            stars = 2
+            
+            # 3 stars: Complete within time limit
+            if self.completion_time <= settings.TIME_LIMIT_3_STAR:
+                stars = 3
         
         return stars
     

@@ -1,5 +1,5 @@
 """
-Storm powerup - clears enemies in large radius
+Storm powerup - permanent stamina boost
 """
 import pygame
 from game.core import settings
@@ -7,24 +7,31 @@ import math
 
 
 class StormPowerup:
-    """Unique storm powerup that clears enemies in a large radius"""
+    """Energy powerup that permanently increases stamina capacity and regen rate"""
     
     def __init__(self, x, y):
         self.rect = pygame.Rect(x, y, 24, 24)
         self.collected = False
         self.rotation = 0
         self.pulse = 0
-        self.lightning_time = 0
+        
+        # Try to load energy sprite
+        self.sprite = None
+        try:
+            sprite_path = 'game/assets/images/sprites/energy.png'
+            self.sprite = pygame.image.load(sprite_path).convert_alpha()
+            self.sprite = pygame.transform.scale(self.sprite, (32, 32))
+        except:
+            pass  # Use fallback rendering
     
     def update(self, dt, player_rect):
         """Update storm powerup and check collection"""
         if self.collected:
             return False
         
-        # Rotation animation
-        self.rotation += dt * 90  # degrees per second
-        self.pulse += dt * 6
-        self.lightning_time += dt * 8
+        # Rotation and pulse animation
+        self.rotation += dt * 120  # degrees per second
+        self.pulse += dt * 5
         
         # Check collision with player
         if self.rect.colliderect(player_rect):
@@ -34,7 +41,7 @@ class StormPowerup:
         return False
     
     def draw(self, screen, camera):
-        """Draw storm powerup with lightning effects"""
+        """Draw energy powerup"""
         if self.collected:
             return
         
@@ -44,36 +51,26 @@ class StormPowerup:
         
         center = draw_rect.center
         
-        # Pulsing glow with lightning effect
-        glow_radius = 25 + int(math.sin(self.pulse) * 8)
+        # Pulsing glow
+        glow_radius = 28 + int(math.sin(self.pulse) * 6)
         glow_surf = pygame.Surface((glow_radius * 2, glow_radius * 2), pygame.SRCALPHA)
-        
-        # Lightning effect - flickering colors
-        lightning_intensity = int(math.sin(self.lightning_time) * 50 + 50)
-        glow_color = (lightning_intensity, lightning_intensity, 255, 80)
+        glow_color = (100, 200, 255, 70)
         pygame.draw.circle(glow_surf, glow_color, (glow_radius, glow_radius), glow_radius)
         screen.blit(glow_surf, (center[0] - glow_radius, center[1] - glow_radius))
         
-        # Draw storm cloud shape
-        cloud_points = []
-        for i in range(8):
-            angle = math.radians(self.rotation + i * 45)
-            radius = 8 + int(math.sin(self.pulse + i) * 3)
-            px = center[0] + math.cos(angle) * radius
-            py = center[1] + math.sin(angle) * radius
-            cloud_points.append((px, py))
-        
-        pygame.draw.polygon(screen, (100, 100, 150), cloud_points)
-        pygame.draw.polygon(screen, (150, 150, 200), cloud_points, 2)
-        
-        # Lightning bolt in center
-        lightning_color = (255, 255, lightning_intensity)
-        pygame.draw.line(screen, lightning_color, 
-                        (center[0], center[1] - 8), 
-                        (center[0], center[1] + 8), 3)
-        pygame.draw.line(screen, lightning_color, 
-                        (center[0] - 4, center[1] - 4), 
-                        (center[0] + 4, center[1] + 4), 2)
-        
-        # Debug: Draw a simple rectangle to make sure it's visible
-        pygame.draw.rect(screen, (255, 0, 0), draw_rect, 2)  # Red border for debugging
+        # Draw sprite if loaded
+        if self.sprite:
+            # Rotate sprite
+            rotated = pygame.transform.rotate(self.sprite, self.rotation)
+            rotated_rect = rotated.get_rect(center=center)
+            screen.blit(rotated, rotated_rect)
+        else:
+            # Fallback: draw energy orb
+            # Outer ring
+            pygame.draw.circle(screen, (100, 200, 255), center, 14)
+            # Inner ring
+            pygame.draw.circle(screen, (200, 230, 255), center, 10)
+            # Core
+            pygame.draw.circle(screen, (255, 255, 255), center, 5)
+            # Border
+            pygame.draw.circle(screen, (150, 220, 255), center, 14, 2)

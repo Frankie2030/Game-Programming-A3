@@ -1,6 +1,7 @@
 """
 Core game settings and constants
 """
+import pygame
 
 # Display
 SCREEN_WIDTH = 1280
@@ -37,7 +38,7 @@ STAMINA_REGEN_RATE = 3.0
 STAMINA_POWERUP_MULTIPLIER = 2.0  # 2x faster regeneration with powerup
 
 # Boss
-BOSS_HP = 8
+BOSS_HP = 10
 BOSS_PATTERN_DURATION = 10.0  # seconds
 BOSS_WEAK_WINDOW = 2.0  # seconds
 BOSS_TELEGRAPH_TIME = 1.5  # seconds
@@ -81,3 +82,12 @@ MINIMAP_BORDER_RADIUS = 8
 MINIMAP_GRID_COLOR = (80, 80, 90)
 MINIMAP_VIEWPORT_COLOR = (180, 180, 255)
 MINIMAP_PLAYER_COLOR = (255, 230, 50)
+
+# Default key bindings
+DEFAULT_KEY_BINDINGS = {
+    'move_left': [pygame.K_a, pygame.K_LEFT],
+    'move_right': [pygame.K_d, pygame.K_RIGHT],
+    'move_up': [pygame.K_w, pygame.K_UP],
+    'float': [pygame.K_e, pygame.K_LSHIFT, pygame.K_RSHIFT],
+    'shoot': [pygame.K_SPACE, pygame.K_j, pygame.K_x, pygame.K_LCTRL, pygame.K_RCTRL],
+}

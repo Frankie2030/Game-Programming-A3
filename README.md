@@ -175,4 +175,9 @@ Built as a demonstration of gravity-based platforming mechanics with polarity-dr
 - [Character Sprite: Outer Buddies - Asset Pack (Demo)](https://trevor-pupkin.itch.io/outer-buddies)
 - [Enemy Sprite](https://github.com/ArrenanRatnavelu/AlienInvasionGame/tree/master)
 - [BGM: Space trip - Playsound](https://pixabay.com/vi/music/d%E1%BB%B1ng-c%E1%BA%A3nh-space-trip-114102/)
-- SFX: Super Mario Bros
+- Background: Cyberpunk City Skyline - Public Domain / Creative Commons
+- BGM: Cyberpunk Street (Main Menu Theme) - Public Domain / Creative Commons
+- [BGM: The Last Encounter (Boss Theme)](https://opengameart.org/content/rpg-battle-theme-the-last-encounter-0)
+- SFX: 
+  - Game Over: https://pixabay.com/sound-effects/game-over-39-199830/
+  - Others: Super Mario Bros

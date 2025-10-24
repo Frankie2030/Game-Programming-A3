@@ -145,6 +145,27 @@ class LevelLoader:
             y = row * settings.TILE_SIZE
             spikes.append({'x': x, 'y': y, 'orientation': orientation})
         
+        # Buttons
+        buttons = []
+        for pos in entities_data.get('button', []):
+            col, row = pos[0], pos[1]
+            color = pos[2] if len(pos) > 2 else 'red'
+            facing = pos[3] if len(pos) > 3 else 'up'
+            x = col * settings.TILE_SIZE
+            y = row * settings.TILE_SIZE
+            buttons.append({'x': x, 'y': y, 'color': color, 'facing': facing})
+        
+        # Gates
+        gates = []
+        for pos in entities_data.get('gate', []):
+            col, row = pos[0], pos[1]
+            height_tiles = pos[2] if len(pos) > 2 else 3
+            orientation = pos[3] if len(pos) > 3 else 'up'
+            x = col * settings.TILE_SIZE
+            y = row * settings.TILE_SIZE
+            height = height_tiles * settings.TILE_SIZE
+            gates.append({'x': x, 'y': y, 'height': height, 'orientation': orientation})
+        
         # Breakable blocks
         breakables = []
         for pos in entities_data.get('breakable', []):
@@ -186,19 +207,13 @@ class LevelLoader:
         spawn_x = spawn_data[0] * settings.TILE_SIZE
         spawn_y = spawn_data[1] * settings.TILE_SIZE
         
-        # Boss spawn
-        boss_data = entities_data.get('boss', [[140, 11]])[0]
-        boss_x = boss_data[0] * settings.TILE_SIZE
-        boss_y = boss_data[1] * settings.TILE_SIZE
-        
-        return {
+        # Boss spawn (optional)
+        result = {
             'tile_map': tile_map,
             'width': width_tiles,
             'height': height_tiles,
             'spawn_x': spawn_x,
             'spawn_y': spawn_y,
-            'boss_x': boss_x,
-            'boss_y': boss_y,
             'checkpoints': checkpoints,
             'coins': coins,
             'stars': stars,
@@ -206,8 +221,18 @@ class LevelLoader:
             'storms': storms,
             'spikes': spikes,
             'breakables': breakables,
-            'enemies': enemies
+            'enemies': enemies,
+            'buttons': buttons,
+            'gates': gates
         }
+        
+        # Only add boss if it exists in the level data
+        if 'boss' in entities_data and entities_data['boss']:
+            boss_data = entities_data['boss'][0]
+            result['boss_x'] = boss_data[0] * settings.TILE_SIZE
+            result['boss_y'] = boss_data[1] * settings.TILE_SIZE
+        
+        return result
     
     @staticmethod
     def create_test_level():
@@ -248,5 +273,7 @@ class LevelLoader:
             'enemies': [
                 {'type': 'drone', 'x': 800, 'y': settings.WORLD_HEIGHT - 80, 'anchor': 'floor', 'range': 128, 'color': 'blue'},
                 {'type': 'drone', 'x': 1200, 'y': settings.WORLD_HEIGHT - 80, 'anchor': 'floor', 'range': 96, 'color': 'green'}
-            ]
+            ],
+            'buttons': [],
+            'gates': []
         }

@@ -31,12 +31,13 @@ class Player:
         # Health and power-ups
         self.hp = settings.PLAYER_HP
         self.invuln_timer = Timer()
-        self.flux_surge_timer = Timer()
-        self.powerup_timer = Timer()  # Timer for powerup invincibility
-        self.powered_up = False  # Collected a power-up
+        self.flux_surge_timer = Timer()  # Star: invincibility + instant kill enemies
+        self.double_shot = False  # P powerup: permanent double shot
+        self.stamina_boost = False  # Storm powerup: permanent 2x stamina + 2x regen
         
         # Stamina system
-        self.stamina = 1.0  # 0.0 to 1.0 (empty to full)
+        self.max_stamina = 1.0  # Base max stamina (can be 2.0 with storm powerup)
+        self.stamina = 1.0  # Current stamina
         self.stamina_exhausted = False  # Track if we just hit 0 stamina
         self.flip_locked_until_full = False  # Disable manual flip until stamina refills
         
@@ -126,6 +127,7 @@ class Player:
         self.coins = 0
         self.checkpoint_pos = (x, y)
         self.checkpoint_coins = 0
+        self.last_hp_bonus_at = 0  # Track coins when last HP bonus was given
         
         # State
         self.facing_right = True
@@ -142,7 +144,6 @@ class Player:
         self.jump_buffer.update(dt)
         self.invuln_timer.update(dt)
         self.flux_surge_timer.update(dt)
-        self.powerup_timer.update(dt)
         self.attack_timer.update(dt)
         
         # Handle stamina
@@ -194,11 +195,11 @@ class Player:
         if self.on_ground:
             # Regenerate stamina when on ground
             regen_rate = settings.STAMINA_REGEN_RATE
-            if self.powered_up:
-                regen_rate *= settings.STAMINA_POWERUP_MULTIPLIER  # 3x faster with powerup
-            self.stamina = min(1.0, self.stamina + regen_rate * settings.STAMINA_DRAIN_RATE * dt)
+            if self.stamina_boost:
+                regen_rate *= 2.0  # 2x faster with storm powerup
+            self.stamina = min(self.max_stamina, self.stamina + regen_rate * settings.STAMINA_DRAIN_RATE * dt)
             # Unlock flip when fully refilled
-            if self.stamina >= 1.0:
+            if self.stamina >= self.max_stamina:
                 self.stamina_exhausted = False
                 self.flip_locked_until_full = False
         else:
@@ -363,17 +364,33 @@ class Player:
         return True
     
     def collect_coin(self):
-        """Collect a coin"""
+        """Collect a coin and check for HP bonus"""
         self.coins += 1
+        
+        # Give HP bonus for every 10 coins (but not if already at max)
+        coins_since_last_bonus = self.coins - self.last_hp_bonus_at
+        if coins_since_last_bonus >= 10 and self.hp < settings.PLAYER_HP:
+            self.hp += 1
+            self.last_hp_bonus_at = self.coins
+            if self.audio:
+                self.audio.play_sfx('powerup')  # Play a sound for HP gain
+            return True  # Signal that HP was gained
+        return False
     
     def activate_flux_surge(self):
-        """Activate Flux Surge power-up"""
+        """Activate Flux Surge (star) - invincibility + instant kill enemies"""
         self.flux_surge_timer.start(settings.FLUX_SURGE_DURATION)
     
-    def activate_powerup(self):
-        """Activate general power-up"""
-        self.powered_up = True
-        self.powerup_timer.start(settings.POWERUP_INVULN_DURATION)
+    def activate_double_shot(self):
+        """Activate double shot powerup (P icon) - permanent"""
+        self.double_shot = True
+    
+    def activate_stamina_boost(self):
+        """Activate stamina boost (storm/energy) - permanent 2x stamina + 2x regen"""
+        if not self.stamina_boost:
+            self.stamina_boost = True
+            self.max_stamina = 2.0
+            self.stamina = min(self.stamina * 2.0, self.max_stamina)  # Scale current stamina proportionally
     
     def set_checkpoint(self, pos):
         """Set respawn checkpoint"""
@@ -392,34 +409,39 @@ class Player:
         self.alive = True
         self.invuln_timer.stop()
         self.flux_surge_timer.stop()
-        # Reset stamina
-        self.stamina = 1.0
+        # Reset stamina to max (keep permanent upgrades)
+        self.stamina = self.max_stamina
         self.stamina_exhausted = False
         self.flip_locked_until_full = False
+        # Keep double_shot and stamina_boost (permanent powerups)
     
     def is_invulnerable(self):
         """Check if player is currently invulnerable"""
-        return self.invuln_timer.is_active() or self.flux_surge_timer.is_active() or self.powerup_timer.is_active()
+        return self.invuln_timer.is_active() or self.flux_surge_timer.is_active()
     
     def is_flux_surge_active(self):
-        """Check if Flux Surge is active"""
+        """Check if Flux Surge (star) is active"""
         return self.flux_surge_timer.is_active()
     
     def get_flux_surge_time_left(self):
         """Get remaining Flux Surge time"""
         return self.flux_surge_timer.time_left if self.flux_surge_timer.is_active() else 0
     
-    def is_powerup_active(self):
-        """Check if powerup invincibility is active"""
-        return self.powerup_timer.is_active()
+    def has_double_shot(self):
+        """Check if player has double shot powerup"""
+        return self.double_shot
     
-    def get_powerup_time_left(self):
-        """Get remaining powerup time"""
-        return self.powerup_timer.time_left if self.powerup_timer.is_active() else 0
+    def has_stamina_boost(self):
+        """Check if player has stamina boost"""
+        return self.stamina_boost
     
     def get_stamina(self):
-        """Get current stamina as a percentage (0.0 to 1.0)"""
+        """Get current stamina as a percentage (0.0 to max_stamina)"""
         return self.stamina
+    
+    def get_stamina_ratio(self):
+        """Get stamina as a ratio (0.0 to 1.0) for UI display"""
+        return self.stamina / self.max_stamina if self.max_stamina > 0 else 0
     
     def should_spawn_bullet(self):
         """Check if bullet should spawn (mid-attack animation)"""
@@ -443,7 +465,7 @@ class Player:
         draw_rect.y -= camera.y
         
         # Draw stamina bar if needed (floating or refilling)
-        should_show_stamina = not self.on_ground or (self.on_ground and self.stamina < 1.0)
+        should_show_stamina = not self.on_ground or (self.on_ground and self.stamina < self.max_stamina)
         if should_show_stamina:
             self._draw_stamina_bar(screen, draw_rect)
         
@@ -456,8 +478,6 @@ class Player:
         if self.is_attacking and len(self.attack_frames) > 0:
             # Use attack animation
             sprite = self.attack_frames[self.current_frame]
-        elif self.powered_up and self.sprite_powered:
-            sprite = self.sprite_powered
         elif abs(self.vel_x) > 10 and len(self.walk_frames) > 0:
             # Use walking animation
             sprite = self.walk_frames[self.current_frame]
@@ -474,17 +494,24 @@ class Player:
             if self.gravity_dir == -1:
                 sprite_scaled = pygame.transform.flip(sprite_scaled, False, True)
             
-            # Add glow if flux surge
+            # Add YELLOW glow ONLY for flux surge (star powerup - invincibility + instant kill)
             if self.flux_surge_timer.is_active():
-                glow_surf = pygame.Surface((self.rect.width + 16, self.rect.height + 16), pygame.SRCALPHA)
-                pygame.draw.circle(glow_surf, (255, 255, 100, 80), (self.rect.width // 2 + 8, self.rect.height // 2 + 8), self.rect.width // 2 + 8)
-                screen.blit(glow_surf, (draw_rect.centerx - self.rect.width // 2 - 8, draw_rect.centery - self.rect.height // 2 - 8))
+                time_left = self.flux_surge_timer.time_left
+                # Flicker when almost over (last 3 seconds)
+                should_show_glow = True
+                if time_left <= 3.0:
+                    # Flicker faster as time runs out
+                    flicker_speed = 10 if time_left > 1.5 else 20
+                    should_show_glow = (int(time_left * flicker_speed) % 2 == 0)
+                
+                if should_show_glow:
+                    glow_surf = pygame.Surface((self.rect.width + 16, self.rect.height + 16), pygame.SRCALPHA)
+                    # Bright yellow glow for star powerup only
+                    pygame.draw.circle(glow_surf, (255, 255, 100, 80), (self.rect.width // 2 + 8, self.rect.height // 2 + 8), self.rect.width // 2 + 8)
+                    screen.blit(glow_surf, (draw_rect.centerx - self.rect.width // 2 - 8, draw_rect.centery - self.rect.height // 2 - 8))
             
-            # Add glow if powerup invincibility is active
-            if self.powerup_timer.is_active():
-                glow_surf = pygame.Surface((self.rect.width + 20, self.rect.height + 20), pygame.SRCALPHA)
-                pygame.draw.circle(glow_surf, (100, 255, 100, 100), (self.rect.width // 2 + 10, self.rect.height // 2 + 10), self.rect.width // 2 + 10)
-                screen.blit(glow_surf, (draw_rect.centerx - self.rect.width // 2 - 10, draw_rect.centery - self.rect.height // 2 - 10))
+            # No glow for double shot (P powerup) - permanent upgrade, shown in HUD only
+            # No glow for stamina boost (storm) - permanent upgrade, shown in HUD only
             
             # Position the sprite relative to the collision box
             sprite_rect = sprite_scaled.get_rect(center=self.rect.center)
@@ -494,10 +521,14 @@ class Player:
             screen.blit(sprite_scaled, draw_rect)
         elif not should_skip_render:
             # Fallback: colored rect
+            # Check for flux surge with flickering when almost over
             if self.flux_surge_timer.is_active():
-                color = settings.COLOR_YELLOW
-            elif self.powered_up:
-                color = (255, 150, 0)  # Orange
+                time_left = self.flux_surge_timer.time_left
+                should_show = True
+                if time_left <= 3.0:
+                    flicker_speed = 10 if time_left > 1.5 else 20
+                    should_show = (int(time_left * flicker_speed) % 2 == 0)
+                color = settings.COLOR_YELLOW if should_show else settings.COLOR_BLUE
             elif is_invulnerable:
                 color = (150, 200, 255)  # Light blue when invulnerable
             else:
@@ -530,18 +561,20 @@ class Player:
         bg_rect = pygame.Rect(bar_x, bar_y, bar_width, bar_height)
         pygame.draw.rect(screen, settings.COLOR_DARK_GRAY, bg_rect)
         
-        # Foreground bar (filled based on stamina)
-        fill_width = int(bar_width * self.stamina)
+        # Foreground bar (filled based on stamina ratio)
+        stamina_ratio = self.stamina / self.max_stamina if self.max_stamina > 0 else 0
+        fill_width = int(bar_width * stamina_ratio)
         if fill_width > 0:
             fill_rect = pygame.Rect(bar_x, bar_y, fill_width, bar_height)
             # Color based on stamina level
-            if self.stamina > 0.5:
+            if stamina_ratio > 0.5:
                 color = settings.COLOR_GREEN
-            elif self.stamina > 0.25:
+            elif stamina_ratio > 0.25:
                 color = settings.COLOR_YELLOW
             else:
                 color = settings.COLOR_RED
             pygame.draw.rect(screen, color, fill_rect)
         
-        # Border
-        pygame.draw.rect(screen, settings.COLOR_WHITE, bg_rect, 1)
+        # Border (cyan if stamina boost is active)
+        border_color = (100, 200, 255) if self.stamina_boost else settings.COLOR_WHITE
+        pygame.draw.rect(screen, border_color, bg_rect, 1)

@@ -29,17 +29,8 @@ def main():
     audio_manager = AudioManager()
     state_stack.persistent_data['audio'] = audio_manager
     
-    # Load sound effects
-    audio_manager.load_sfx('bump', 'game/assets/audio/sfx/bump.ogg')
-    audio_manager.load_sfx('stomp', 'game/assets/audio/sfx/stomp.ogg')
-    audio_manager.load_sfx('coin', 'game/assets/audio/sfx/coin.ogg')
-    audio_manager.load_sfx('powerup', 'game/assets/audio/sfx/powerup.ogg')
-    
-    # Load placeholder SFX for sounds we don't have files for yet
-    placeholder_sfx = ['jump', 'gravity_flip', 'hit', 'enemy_defeat', 
-                      'boss_hit', 'star', 'checkpoint', 'pause', 'confirm']
-    for sfx in placeholder_sfx:
-        audio_manager.sfx_cache[sfx] = None  # Placeholder
+    # Load all audio assets
+    audio_manager.load_all_audio()
     
     # Push initial state
     state_stack.push(MainMenuState)

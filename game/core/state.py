@@ -1,7 +1,7 @@
 """
 Game state management system
 """
-
+import pygame
 
 class GameState:
     """Base class for all game states"""
@@ -29,7 +29,11 @@ class GameState:
     
     def handle_event(self, event):
         """Handle individual pygame event"""
-        pass
+        # Handle mute toggle with 'M' key
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_m:
+            if 'audio' in self.persistent_data:
+                audio_manager = self.persistent_data['audio']
+                audio_manager.toggle_mute()
 
 
 class StateStack:
@@ -39,6 +43,8 @@ class StateStack:
         self.screen = screen
         self.states = []
         self.persistent_data = {}
+        self.transition = None
+        self.pending_state_change = None
     
     def push(self, state_class, *args, **kwargs):
         """Push a new state onto the stack"""
@@ -52,6 +58,12 @@ class StateStack:
         new_state.enter(previous)
         self.states.append(new_state)
         return new_state
+    
+    def push_with_transition(self, state_class, *args, **kwargs):
+        """Push a new state with fade transition"""
+        from game.core.transition import FadeTransition
+        self.transition = FadeTransition(duration=0.3)
+        self.pending_state_change = ('push', state_class, args, kwargs)
     
     def pop(self):
         """Remove current state and return to previous"""
@@ -68,11 +80,29 @@ class StateStack:
         
         return current
     
+    def pop_with_transition(self):
+        """Remove current state with fade transition"""
+        from game.core.transition import FadeTransition
+        self.transition = FadeTransition(duration=0.3)
+        self.pending_state_change = ('pop', None, None, None)
+    
     def replace(self, state_class, *args, **kwargs):
         """Replace current state with a new one"""
         if self.states:
             self.pop()
         return self.push(state_class, *args, **kwargs)
+    
+    def replace_with_transition(self, state_class, *args, **kwargs):
+        """Replace current state with transition"""
+        from game.core.transition import FadeTransition
+        self.transition = FadeTransition(duration=0.3)
+        self.pending_state_change = ('replace', state_class, args, kwargs)
+    
+    def clear_and_push_with_transition(self, state_class, *args, **kwargs):
+        """Clear all states and push new state with transition"""
+        from game.core.transition import FadeTransition
+        self.transition = FadeTransition(duration=0.3)
+        self.pending_state_change = ('clear_and_push', state_class, args, kwargs)
     
     def clear(self):
         """Remove all states"""
@@ -81,13 +111,43 @@ class StateStack:
     
     def update(self, dt, events):
         """Update the current state"""
-        if self.states:
+        # Update transition if active
+        if self.transition:
+            self.transition.update(dt)
+            
+            # Execute pending state change at halfway point (fully black)
+            if self.transition.is_halfway() and self.pending_state_change:
+                action, state_class, args, kwargs = self.pending_state_change
+                self.pending_state_change = None
+                
+                if action == 'push':
+                    self.push(state_class, *args, **kwargs)
+                elif action == 'replace':
+                    if self.states:
+                        self.pop()
+                    self.push(state_class, *args, **kwargs)
+                elif action == 'pop':
+                    self.pop()
+                elif action == 'clear_and_push':
+                    self.clear()
+                    self.push(state_class, *args, **kwargs)
+            
+            # Clear transition when complete
+            if self.transition.is_complete():
+                self.transition = None
+        
+        # Update current state only if no transition is blocking
+        if self.states and not self.transition:
             self.states[-1].update(dt, events)
     
     def draw(self, screen):
         """Draw the current state"""
         if self.states:
             self.states[-1].draw(screen)
+        
+        # Draw transition overlay on top
+        if self.transition:
+            self.transition.draw(screen)
     
     def handle_event(self, event):
         """Pass event to current state"""

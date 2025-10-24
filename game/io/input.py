@@ -7,7 +7,7 @@ import pygame
 class InputHandler:
     """Maps keyboard input to game actions"""
     
-    def __init__(self):
+    def __init__(self, key_bindings=None):
         # Action states
         self.actions = {
             'left': False,
@@ -28,32 +28,38 @@ class InputHandler:
             'debug_pressed': False,
         }
         
-        # Key mappings
-        self.key_map = {
-            pygame.K_LEFT: 'left',
-            pygame.K_a: 'left',
-            pygame.K_RIGHT: 'right',
-            pygame.K_d: 'right',
-            pygame.K_w: 'jump',
-            pygame.K_UP: 'jump',
-            # Additional jump keys to avoid rollover issues
-            pygame.K_k: 'jump',
-            pygame.K_z: 'jump',
-            pygame.K_e: 'action',
-            pygame.K_LSHIFT: 'action',
-            pygame.K_RSHIFT: 'action',
-            # Multiple attack keys so firing is independent from jump
-            pygame.K_SPACE: 'attack',
-            pygame.K_j: 'attack',
-            pygame.K_x: 'attack',
-            pygame.K_LCTRL: 'attack',
-            pygame.K_RCTRL: 'attack',
-            pygame.K_ESCAPE: 'pause',
-            pygame.K_p: 'pause',
-            pygame.K_RETURN: 'confirm',
-            pygame.K_BACKSPACE: 'back',
-            pygame.K_b: 'debug',
-        }
+        # Default key bindings (can be customized)
+        from game.core import settings
+        self.key_bindings = key_bindings if key_bindings is not None else settings.DEFAULT_KEY_BINDINGS.copy()
+        self._build_key_map()
+    
+    def _build_key_map(self):
+        """Build key_map from key_bindings and fixed keys"""
+        self.key_map = {}
+        
+        # Add remappable keys
+        for key in self.key_bindings.get('move_left', []):
+            self.key_map[key] = 'left'
+        for key in self.key_bindings.get('move_right', []):
+            self.key_map[key] = 'right'
+        for key in self.key_bindings.get('move_up', []):
+            self.key_map[key] = 'jump'
+        for key in self.key_bindings.get('float', []):
+            self.key_map[key] = 'action'
+        for key in self.key_bindings.get('shoot', []):
+            self.key_map[key] = 'attack'
+        
+        # Fixed system keys (not remappable)
+        self.key_map[pygame.K_ESCAPE] = 'pause'
+        self.key_map[pygame.K_p] = 'pause'
+        self.key_map[pygame.K_RETURN] = 'confirm'
+        self.key_map[pygame.K_BACKSPACE] = 'back'
+        self.key_map[pygame.K_b] = 'debug'
+    
+    def update_key_bindings(self, key_bindings):
+        """Update key bindings and rebuild key map"""
+        self.key_bindings = key_bindings
+        self._build_key_map()
     
     def update(self, events):
         """Update action states based on events"""

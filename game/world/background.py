@@ -34,9 +34,9 @@ class ParallaxBackground:
     def _load_transparent_images(self):
         """Load city skyline images with proper transparency handling"""
         layer_paths = [
-            "game/assets/public-assets/city skyline/Layers/back.png",
-            "game/assets/public-assets/city skyline/Layers/buildings.png", 
-            "game/assets/public-assets/city skyline/Layers/front.png"
+            "game/assets/images/bg/Layers/back.png",
+            "game/assets/images/bg/Layers/buildings.png", 
+            "game/assets/images/bg/Layers/front.png"
         ]
         
         speeds = [0.2, 0.5, 0.8]  # Back, middle, front
@@ -56,6 +56,10 @@ class ParallaxBackground:
                 
                 # Scale the image while preserving transparency
                 scaled_image = pygame.transform.scale(image, (new_width, new_height))
+                
+                # Make the layer more dim by reducing opacity
+                scaled_image = scaled_image.copy()
+                scaled_image.set_alpha(100)  # 0-255, lower = more dim
                 print(f"Scaled: {scaled_image.get_size()}")
                 
                 # Ensure the image is wide enough for seamless scrolling

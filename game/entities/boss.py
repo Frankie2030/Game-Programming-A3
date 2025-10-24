@@ -3,7 +3,9 @@ Boss: Gyro-Core with pattern phases
 """
 import pygame
 from game.core import settings, Timer
+from game.entities.spikes import AnimatedSpike
 import math
+import random
 
 
 class GyroBoss:
@@ -30,6 +32,50 @@ class GyroBoss:
         # Hazard beams (simple rotating lines)
         self.beam_rotation = 0
         self.beam_speed = 120  # degrees/second
+        
+        # Spike attack system
+        self.animated_spikes = []  # List of active animated spikes
+        self.spike_attack_timer = 0
+        self.spike_attack_cooldown = 3.0  # Spawn spike wave every 3 seconds
+        self.arena_bounds = None  # Will be set by level
+    
+    def set_arena_bounds(self, floor_y, ceiling_y, left_x, right_x):
+        """Set arena boundaries for spike spawning"""
+        self.arena_bounds = {
+            'floor_y': floor_y,
+            'ceiling_y': ceiling_y,
+            'left_x': left_x,
+            'right_x': right_x
+        }
+    
+    def spawn_spike_wave(self):
+        """Spawn a wave of animated spikes"""
+        if not self.arena_bounds:
+            return
+        
+        # Spawn random spikes from floor or ceiling
+        # if boss hp < 50% increase number of spikes
+        if self.hp < self.max_hp / 2:
+            num_spikes = random.randint(30, 40)
+        else:
+            num_spikes = random.randint(20, 30)
+
+        for _ in range(num_spikes):
+            # Random position across arena width
+            x = random.randint(self.arena_bounds['left_x'], self.arena_bounds['right_x'] - settings.TILE_SIZE)
+            
+            # Randomly choose floor or ceiling
+            if random.choice([True, False]):
+                # Spawn from floor (growing up)
+                y = self.arena_bounds['floor_y']
+                orientation = 'up'
+            else:
+                # Spawn from ceiling (growing down)
+                y = self.arena_bounds['ceiling_y']
+                orientation = 'down'
+            
+            spike = AnimatedSpike(x, y, orientation=orientation, telegraph_time=1.0, grow_time=0.5, active_time=1.0, retract_time=0.5)
+            self.animated_spikes.append(spike)
     
     def update(self, dt):
         """Update boss logic"""
@@ -58,9 +104,21 @@ class GyroBoss:
             self.vulnerable = False
             # Rotate beams during hazard phase
             self.beam_rotation += self.beam_speed * dt
+            
+            # Spike attack system - spawn waves during hazard phase
+            self.spike_attack_timer += dt
+            if self.spike_attack_timer >= self.spike_attack_cooldown:
+                self.spawn_spike_wave()
+                self.spike_attack_timer = 0
         else:
             self.phase = 'recalibration'
             self.vulnerable = True
+        
+        # Update all animated spikes
+        for spike in self.animated_spikes[:]:
+            spike.update(dt)
+            if spike.is_done():
+                self.animated_spikes.remove(spike)
     
     def take_damage(self, amount=1):
         """Take damage during vulnerable phase"""
@@ -77,9 +135,18 @@ class GyroBoss:
         
         return True
     
-    def check_hit_player(self, player_rect, player_invuln):
+    def check_hit_player(self, player_rect, player_invuln, player_gravity_dir):
         """Check if hazards hit player"""
-        if self.phase != 'hazard' or player_invuln:
+        if player_invuln:
+            return False
+        
+        # Check animated spikes
+        for spike in self.animated_spikes:
+            if spike.check_collision(player_rect, player_gravity_dir):
+                return True
+        
+        # Check laser beams during hazard phase
+        if self.phase != 'hazard':
             return False
         
         # Check if player intersects with rotating laser beams
@@ -168,6 +235,10 @@ class GyroBoss:
                 y2 = center[1] + math.sin(angle) * 200
                 pygame.draw.line(screen, (255, 100, 100), (x1, y1), (x2, y2), 6)
                 pygame.draw.line(screen, settings.COLOR_RED, (x1, y1), (x2, y2), 3)
+        
+        # Draw animated spikes
+        for spike in self.animated_spikes:
+            spike.draw(screen, camera)
     
     def draw_hp_bar(self, screen):
         """Draw boss HP bar at top of screen"""

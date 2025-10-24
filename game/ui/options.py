@@ -14,6 +14,7 @@ class OptionsState(GameState):
         self.selected = 0
         self.font = pygame.font.Font(None, 36)
         self.audio = stack.persistent_data.get('audio')
+        self.num_options = 3  # Music, SFX, Controls
         
         # Distinct animated background
         self._time = 0.0
@@ -37,7 +38,7 @@ class OptionsState(GameState):
             if event.key == pygame.K_UP or event.key == pygame.K_w:
                 self.selected = max(0, self.selected - 1)
             elif event.key == pygame.K_DOWN or event.key == pygame.K_s:
-                self.selected = min(2, self.selected + 1)
+                self.selected = min(3, self.selected + 1)
             elif event.key == pygame.K_LEFT or event.key == pygame.K_a:
                 self._adjust_volume(-0.1)
             elif event.key == pygame.K_RIGHT or event.key == pygame.K_d:
@@ -46,7 +47,10 @@ class OptionsState(GameState):
                 self.stack.pop()
             elif event.key == pygame.K_RETURN or event.key == pygame.K_SPACE:
                 # Handle Enter/Space key
-                if self.selected == 2:  # Back option
+                if self.selected == 2:  # Controls
+                    from game.ui import ControlsState
+                    self.stack.push(ControlsState)
+                elif self.selected == 3:  # Back option
                     self.stack.pop()
                 # For volume options, Enter/Space could also adjust volume
                 elif self.selected < 2:
@@ -63,6 +67,9 @@ class OptionsState(GameState):
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             mx, my = event.pos
             if self.selected == 2 and len(self.option_rects) > 2 and self.option_rects[2].collidepoint(mx, my):
+                from game.ui import ControlsState
+                self.stack.push(ControlsState)
+            elif self.selected == 3 and len(self.option_rects) > 3 and self.option_rects[3].collidepoint(mx, my):
                 self.stack.pop()
             for i in (0, 1):
                 if i < len(self.slider_rects) and self.slider_rects[i].collidepoint(mx, my):
@@ -123,7 +130,7 @@ class OptionsState(GameState):
         
         # Volume controls
         y = 260
-        labels = ["Music Volume", "SFX Volume", "Back"]
+        labels = ["Music Volume", "SFX Volume", "Controls", "Back"]
         
         self.option_rects = []
         self.slider_rects = []

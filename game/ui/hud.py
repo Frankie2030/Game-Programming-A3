@@ -12,7 +12,7 @@ class HUD:
         self.font = pygame.font.Font(None, 28)
         self.small_font = pygame.font.Font(None, 20)
     
-    def draw(self, screen, player, boss=None, show_fps=False, fps=0, show_hitboxes=False, clear_conditions=None, game_time=0.0, camera=None, minimap_entities=None):
+    def draw(self, screen, player, boss=None, show_fps=False, fps=0, show_hitboxes=False, clear_conditions=None, game_time=0.0, camera=None, minimap_entities=None, audio_manager=None):
         """Draw HUD elements"""
         # HP/Lives
         hp_text = f"HP: {player.hp}/{settings.PLAYER_HP}"
@@ -39,33 +39,50 @@ class HUD:
             time_surf = self.font.render(time_text, True, time_color)
             screen.blit(time_surf, (10, 100))
         
-        # Flux Surge timer
-        if player.is_flux_surge_active():
-            time_left = player.get_flux_surge_time_left()
-            star_text = f"FLUX SURGE: {time_left:.1f}s"
-            star_surf = self.font.render(star_text, True, settings.COLOR_YELLOW)
-            star_rect = star_surf.get_rect(centerx=settings.SCREEN_WIDTH // 2, top=10)
+        # Flux Surge timer (star - temporary invincibility + instant kill)
+        # if player.is_flux_surge_active():
+            # time_left = player.get_flux_surge_time_left()
+            # star_text = f"FLUX SURGE: {time_left:.1f}s"
+            # star_surf = self.font.render(star_text, True, settings.COLOR_YELLOW)
+            # star_rect = star_surf.get_rect(centerx=settings.SCREEN_WIDTH // 2, top=10)
             
             # Pulsing background
-            bg_rect = star_rect.inflate(20, 10)
-            pygame.draw.rect(screen, (100, 100, 0, 128), bg_rect)
-            pygame.draw.rect(screen, settings.COLOR_YELLOW, bg_rect, 2)
+            # bg_rect = star_rect.inflate(20, 10)
+            # pygame.draw.rect(screen, (100, 100, 0, 128), bg_rect)
+            # pygame.draw.rect(screen, settings.COLOR_YELLOW, bg_rect, 2)
             
-            screen.blit(star_surf, star_rect)
+            # screen.blit(star_surf, star_rect)
         
-        # Powerup invincibility timer
-        if player.is_powerup_active():
-            time_left = player.get_powerup_time_left()
-            powerup_text = f"INVINCIBLE: {time_left:.1f}s"
-            powerup_surf = self.font.render(powerup_text, True, settings.COLOR_GREEN)
-            powerup_rect = powerup_surf.get_rect(centerx=settings.SCREEN_WIDTH // 2, top=50)
+        # Permanent powerup indicators (bottom right corner)
+        powerup_y = settings.SCREEN_HEIGHT - 60
+        powerup_x = settings.SCREEN_WIDTH - 150
+        
+        # Double shot indicator
+        if player.has_double_shot():
+            triple_text = "DOUBLE SHOT"
+            triple_surf = self.small_font.render(triple_text, True, (255, 200, 0))
+            triple_rect = triple_surf.get_rect(right=settings.SCREEN_WIDTH - 10, bottom=powerup_y)
             
-            # Pulsing background
-            bg_rect = powerup_rect.inflate(20, 10)
-            pygame.draw.rect(screen, (0, 100, 0, 128), bg_rect)
-            pygame.draw.rect(screen, settings.COLOR_GREEN, bg_rect, 2)
+            # Background
+            bg_rect = triple_rect.inflate(10, 5)
+            pygame.draw.rect(screen, (60, 40, 0, 180), bg_rect)
+            pygame.draw.rect(screen, (255, 200, 0), bg_rect, 1)
             
-            screen.blit(powerup_surf, powerup_rect)
+            screen.blit(triple_surf, triple_rect)
+            powerup_y -= 25
+        
+        # Stamina boost indicator
+        if player.has_stamina_boost():
+            stamina_text = "STAMINA BOOST"
+            stamina_surf = self.small_font.render(stamina_text, True, (100, 200, 255))
+            stamina_rect = stamina_surf.get_rect(right=settings.SCREEN_WIDTH - 10, bottom=powerup_y)
+            
+            # Background
+            bg_rect = stamina_rect.inflate(10, 5)
+            pygame.draw.rect(screen, (20, 40, 60, 180), bg_rect)
+            pygame.draw.rect(screen, (100, 200, 255), bg_rect, 1)
+            
+            screen.blit(stamina_surf, stamina_rect)
         
         # Boss HP bar
         if boss and boss.alive:
@@ -81,8 +98,18 @@ class HUD:
         if camera is not None:
             self._draw_minimap(screen, player, camera, minimap_entities)
         
+        # Mute indicator
+        if audio_manager and audio_manager.is_muted():
+            muted_text = "MUTED"
+            muted_surf = self.font.render(muted_text, True, settings.COLOR_RED)
+            muted_rect = muted_surf.get_rect(right=settings.SCREEN_WIDTH - 10, top=10)
+            # Background for visibility
+            bg_rect = muted_rect.inflate(10, 5)
+            pygame.draw.rect(screen, (0, 0, 0, 128), bg_rect)
+            screen.blit(muted_surf, muted_rect)
+        
         # Controls hint
-        hint_text = "Arrow/WASD: Move | Space/W: Jump | E/Shift: Flip Gravity | B: Debug | ESC: Pause"
+        hint_text = "Arrow/WASD: Move | Space/W: Jump | E/Shift: Flip Gravity | M: Mute | B: Debug | ESC: Pause"
         hint_surf = self.small_font.render(hint_text, True, settings.COLOR_GRAY)
         hint_rect = hint_surf.get_rect(centerx=settings.SCREEN_WIDTH // 2, 
                                         bottom=settings.SCREEN_HEIGHT - 5)

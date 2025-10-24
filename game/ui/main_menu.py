@@ -29,12 +29,18 @@ class MainMenuState(GameState):
         # Visual polish
         self._pulse_time = 0.0
     
+    def enter(self, previous_state=None):
+        """Called when entering this state"""
+        audio = self.stack.persistent_data.get('audio')
+        if audio:
+            audio.play_music(audio.MUSIC_MENU)
+    
     def _update_options(self):
         """Update menu options based on save state"""
-        if SaveSystem.has_save():
-            self.options = ['Resume Game', 'New Game', 'Options', 'About', 'Exit']
+        if SaveSystem.has_resume():
+            self.options = ['Resume Game', 'Level Select', 'New Game', 'How to Play', 'Options', 'About', 'Exit']
         else:
-            self.options = ['New Game', 'Options', 'About', 'Exit']
+            self.options = ['New Game', 'Level Select', 'How to Play', 'Options', 'About', 'Exit']
         self.selected = 0
     
     def update(self, dt, events):
@@ -50,6 +56,9 @@ class MainMenuState(GameState):
     
     def handle_event(self, event):
         """Handle input"""
+        # Call parent to handle mute toggle
+        super().handle_event(event)
+        
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_UP or event.key == pygame.K_w:
                 self.selected = (self.selected - 1) % len(self.options)
@@ -74,15 +83,21 @@ class MainMenuState(GameState):
         
         if option == 'Resume Game':
             from game.world.level import LevelState
-            # Load saved game data and pass it to LevelState
-            save_data = SaveSystem.load_game()
-            if save_data:
-                self.stack.push(LevelState, save_data=save_data)
+            # Resume the current level (starts fresh at spawn)
+            level_id = SaveSystem.get_current_level()
+            if level_id:
+                self.stack.push_with_transition(LevelState, level_id=level_id)
+        elif option == 'Level Select':
+            from game.ui.level_select import LevelSelectState
+            self.stack.push_with_transition(LevelSelectState)
         elif option == 'New Game':
             from game.world.level import LevelState
             # Delete existing save when starting new game
             SaveSystem.delete_save()
-            self.stack.push(LevelState)
+            self.stack.push_with_transition(LevelState, level_id=1)
+        elif option == 'How to Play':
+            from game.ui.how_to_play import HowToPlayState
+            self.stack.push(HowToPlayState)
         elif option == 'Options':
             from game.ui.options import OptionsState
             self.stack.push(OptionsState)
@@ -145,15 +160,27 @@ class MainMenuState(GameState):
                 screen.blit(indicator, (rect.left - 50, rect.top))
         
         # Show save info if available
-        if SaveSystem.has_save():
+        if SaveSystem.has_resume():
             save_info = SaveSystem.get_save_info()
             if save_info:
-                boss_status = "Defeated" if save_info['boss_defeated'] else f"HP: {save_info['boss_hp']}"
-                info_text = f"Save: Level {save_info['level']} | {save_info['coins']} coins | {save_info['game_time']:.1f}s | Boss: {boss_status}"
+                info_text = f"In Progress: Level {save_info['current_level']} | Attempt #{save_info['attempts']}"
                 info_surf = self.small_font.render(info_text, True, settings.COLOR_GRAY)
                 info_rect = info_surf.get_rect(centerx=settings.SCREEN_WIDTH // 2, y=start_y + len(self.options) * 60 + 20)
                 screen.blit(info_surf, info_rect)
 
+        # Mute indicator (top right)
+        audio = self.stack.persistent_data.get('audio')
+        if audio and audio.is_muted():
+            muted_text = "MUTED"
+            muted_surf = self.menu_font.render(muted_text, True, settings.COLOR_RED)
+            muted_rect = muted_surf.get_rect(right=settings.SCREEN_WIDTH - 20, top=20)
+            # Background for visibility
+            bg_rect = muted_rect.inflate(20, 10)
+            bg_surf = pygame.Surface((bg_rect.width, bg_rect.height), pygame.SRCALPHA)
+            bg_surf.fill((0, 0, 0, 160))
+            screen.blit(bg_surf, bg_rect.topleft)
+            screen.blit(muted_surf, muted_rect)
+        
         # Footer hints
-        footer = self.small_font.render("Enter/Click: Select   W/S or Up/Down: Navigate   Esc: Quit", True, settings.COLOR_WHITE)
+        footer = self.small_font.render("Enter/Click: Select   W/S or Up/Down: Navigate   M: Mute   Esc: Quit", True, settings.COLOR_WHITE)
         screen.blit(footer, (20, settings.SCREEN_HEIGHT - 34))
