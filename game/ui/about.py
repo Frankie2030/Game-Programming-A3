@@ -216,7 +216,8 @@ class AboutState(GameState):
         # Controls section
         controls_items = [
             "Arrow Keys / WASD - Move",
-            "Space / W / Up - Jump", 
+            "W / Up - Jump", 
+            "Space - Shoot",
             "E / Shift - Flip Gravity",
             "ESC - Pause"
         ]

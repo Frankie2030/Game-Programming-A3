@@ -65,6 +65,29 @@ class SaveSystem:
             return False
     
     @staticmethod
+    def save_game(player_data, level_data, game_time, coins_collected, enemies_defeated, boss_data=None, entities_data=None):
+        """Save current game state for resuming later"""
+        try:
+            data = SaveSystem._load_data()
+            
+            # Store the game state for resuming
+            data['game_state'] = {
+                'player': player_data,
+                'level': level_data,
+                'game_time': game_time,
+                'coins_collected': coins_collected,
+                'enemies_defeated': enemies_defeated,
+                'boss': boss_data,
+                'entities': entities_data,
+                'timestamp': datetime.now().isoformat()
+            }
+            
+            return SaveSystem._save_data(data)
+        except Exception as e:
+            print(f"Failed to save game state: {e}")
+            return False
+    
+    @staticmethod
     def start_level(level_id):
         """Mark a level as currently being played and increment attempts"""
         data = SaveSystem._load_data()

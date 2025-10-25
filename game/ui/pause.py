@@ -102,7 +102,9 @@ class PauseState(GameState):
                 'checkpoint_y': level_state.player.checkpoint_pos[1],
                 'gravity_dir': level_state.player.gravity_dir,
                 'stamina': level_state.player.stamina,
-                'powered_up': level_state.player.powered_up
+                'double_shot': level_state.player.double_shot,
+                'stamina_boost': level_state.player.stamina_boost,
+                'flux_surge_active': level_state.player.flux_surge_timer.is_active()
             }
             
             level_data = {
