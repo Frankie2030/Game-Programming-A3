@@ -638,10 +638,13 @@ class LevelState(GameState):
         # Clear all bullets
         self.bullets.clear()
         
-        # Reset enemies to alive state
+        # Remove collected coins
+        self.coins = [coin for coin in self.coins if not coin.collected]
+        
+        # Only respawn enemies that are still alive
         for enemy in self.enemies:
-            enemy.alive = True
-            enemy.hp = 1  # Reset enemy HP
+            if enemy.alive:  # Only reset alive enemies
+                enemy.hp = 1  # Reset enemy HP
         
         # Reset boss if exists
         if self.boss:
