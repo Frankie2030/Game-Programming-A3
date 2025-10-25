@@ -1,9 +1,8 @@
 {
   "unlocked_levels": [
-    1,
-    2
+    1
   ],
-  "current_level": 2,
+  "current_level": 1,
   "levels": {
     "1": {
       "completed": true,
