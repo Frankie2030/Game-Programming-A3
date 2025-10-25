@@ -79,6 +79,12 @@ class GyroBoss:
     
     def update(self, dt):
         """Update boss logic"""
+        # Always update spikes even when boss is dead
+        for spike in self.animated_spikes[:]:
+            spike.update(dt)
+            if spike.is_done():
+                self.animated_spikes.remove(spike)
+        
         if not self.alive:
             return
         
@@ -113,12 +119,6 @@ class GyroBoss:
         else:
             self.phase = 'recalibration'
             self.vulnerable = True
-        
-        # Update all animated spikes
-        for spike in self.animated_spikes[:]:
-            spike.update(dt)
-            if spike.is_done():
-                self.animated_spikes.remove(spike)
     
     def take_damage(self, amount=1):
         """Take damage during vulnerable phase"""
@@ -132,8 +132,18 @@ class GyroBoss:
             self.hp = 0
             self.alive = False
             self.defeated = True
+            # Trigger spike retraction when boss dies
+            self.retract_all_spikes()
         
         return True
+
+    def retract_all_spikes(self):
+        """Make all active spikes retract when boss dies"""
+        for spike in self.animated_spikes:
+            if not spike.is_done():
+                # Set spike to retracting state and reset timer
+                spike.state = 'retracting'
+                spike.timer = 0
     
     def check_hit_player(self, player_rect, player_invuln, player_gravity_dir):
         """Check if hazards hit player"""
@@ -156,10 +166,10 @@ class GyroBoss:
         
         for i in range(2):
             angle = math.radians(self.beam_rotation + i * 180)
-            # Beam extends 200 pixels from boss center
-            beam_end_x = boss_center[0] + math.cos(angle) * 200
-            beam_end_y = boss_center[1] + math.sin(angle) * 200
-            
+            # Beam extends 350 pixels from boss center
+            beam_end_x = boss_center[0] + math.cos(angle) * 275
+            beam_end_y = boss_center[1] + math.sin(angle) * 275
+
             # Check distance from player to beam line
             dist = self._point_to_line_distance(
                 player_center[0], player_center[1],
@@ -231,8 +241,8 @@ class GyroBoss:
                 angle = math.radians(self.beam_rotation + i * 180)
                 x1 = center[0] + math.cos(angle) * 48
                 y1 = center[1] + math.sin(angle) * 48
-                x2 = center[0] + math.cos(angle) * 200
-                y2 = center[1] + math.sin(angle) * 200
+                x2 = center[0] + math.cos(angle) * 275
+                y2 = center[1] + math.sin(angle) * 275
                 pygame.draw.line(screen, (255, 100, 100), (x1, y1), (x2, y2), 6)
                 pygame.draw.line(screen, settings.COLOR_RED, (x1, y1), (x2, y2), 3)
         

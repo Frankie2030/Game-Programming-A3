@@ -223,7 +223,7 @@ class AnimatedSpike:
             color = (255, 255, 0, alpha)  # Yellow warning
             indicator_rect = pygame.Rect(draw_x, draw_y - 10, self.width, 10)
             if self.orientation == 'down':
-                indicator_rect.y = draw_y + self.width
+                indicator_rect.y = draw_y
             
             # Draw pulsing warning box
             pygame.draw.rect(screen, (255, 255, 0), indicator_rect)
