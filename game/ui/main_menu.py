@@ -83,10 +83,10 @@ class MainMenuState(GameState):
         
         if option == 'Resume Game':
             from game.world.level import LevelState
-            # Resume the current level (starts fresh at spawn)
+            # Resume the current level from saved checkpoint
             level_id = SaveSystem.get_current_level()
             if level_id:
-                self.stack.push_with_transition(LevelState, level_id=level_id)
+                self.stack.push_with_transition(LevelState, level_id=level_id, restore_checkpoint=True)
         elif option == 'Level Select':
             from game.ui.level_select import LevelSelectState
             self.stack.push_with_transition(LevelSelectState)

@@ -1,103 +1,224 @@
-# Update Notes - New Features
+# Gravity Courier - Development Specification Checklist
 
-## ✅ Completed Features
+This document serves as a detailed checklist for the "Gravity Courier" platformer, mapping the requirements from `Assignment3_Platformer_Specification.pdf` to their implementation in the codebase. Each achieved item includes a comprehensive code snippet for reference.
 
-### 1. **Debug Hitboxes (Press B)**
-- Press **B** to toggle hitbox visualization
-- Green box = Player hitbox
-- Magenta boxes = Enemy/Boss hitboxes
-- Helps debug collision issues
-- Indicator shows "DEBUG MODE: Hitboxes ON" when active
+## 2) World & Camera (3 pts total)
 
-### 2. **Bigger Enemies with Attack Direction Arrows**
-- Enemies increased from 28×20 to **48×40 pixels**
-- Yellow arrows show which direction to attack from:
-  - Floor enemies: Arrow points **DOWN** (attack from above)
-  - Ceiling enemies: Arrow points **UP** (attack from below)
-- Improved stomp tolerance (epsilon increased from 5 to 8 pixels)
+*   **Map size ≥4× screen area (1 pt): Example: 5120×720 (horizontal) or 1280×2880 (vertical). Player can traverse beyond a single screen.**
+    *   ✅ **Achieved:** The world width is 4 times the screen width, allowing horizontal traversal.
+        ```python
+        # game/core/settings.py
+        WORLD_WIDTH = 5120  # px (160 tiles)
+        WORLD_HEIGHT = 720  # px (22.5 tiles, round to 23)
+        SCREEN_WIDTH = 1280
+        SCREEN_HEIGHT = 720
+        ```
+*   **Scrolling on one axis (2 pts): Horizontal or vertical camera follow; clamp at world edges; avoid jitter via smoothing or tile-aligned steps.**
+    *   ✅ **Achieved:** Horizontal camera follow with smoothing and clamping at world edges.
+        ```python
+        # game/world/level.py
+        self.camera = Camera(settings.WORLD_WIDTH, settings.WORLD_HEIGHT)
+        self.camera.update(self.player.rect, dt)
+        # game/core/settings.py
+        CAMERA_SMOOTHING = 0.1
+        ```
 
-### 3. **New Entities**
+## 3) Core Interactions (3 pts total)
 
-#### **Spikes**
-- Deadly hazards that damage on contact
-- Four orientations: 'up', 'down', 'left', 'right'
-- Only hurt from the pointed direction
-- Added to level at positions: [45,19], [46,19], [70,19], [71,19]
+*   **Enemy defeat (1 pt): At least one enemy vulnerable to a specific tactic (e.g., jump-stomp) with visual/audio feedback and removal/state change.**
+    *   ✅ **Achieved:** Enemies can be defeated by stomping, projectiles, or Flux Surge.
+        ```python
+        # game/world/level.py
+        # Check bullet hits enemy
+        if enemy.alive and bullet.rect.colliderect(enemy.rect):
+            enemy.take_damage()
+        # Check stomp
+        elif enemy.check_stomp(self.player):
+            enemy.take_damage()
+        ```
+*   **Breakable containers (1 pt): Crates/blocks that break via jump/attack and spawn items; update collision boxes after breaking.**
+    *   ✅ **Achieved:** Breakable blocks are implemented, can spawn items, and update collision.
+        ```python
+        # game/world/level.py
+        for block in self.breakables:
+            if block.is_solid() and block.rect.colliderect(self.player.rect):
+                item = block.hit('any')
+        # game/entities/breakable.py
+        def is_solid(self):
+            return not self.broken
+        ```
+*   **Coin collection (1 pt): Coins with pickup sound and on-screen counter; persist count across the level.**
+    *   ✅ **Achieved:** Coins are collectible with sound, on-screen counter, and persist across levels.
+        ```python
+        # game/world/level.py
+        for coin in self.coins:
+            if coin.update(dt, self.player.rect):
+                self.player.collect_coin()
+                self.audio.play_sfx('coin')
+        # game/entities/player.py
+        self.coins = 0
+        def collect_coin(self):
+            self.coins += 1
+        ```
 
-#### **Breakable Blocks**
-- Brown brick blocks that break when hit
-- May contain coins or power-ups
-- Break animation with flying particles
-- Contents hint shown as small icon on block
-- Added 5 breakable blocks in level with various contents
+## 4) Special Objects (2 pts total)
 
-#### **Power-Ups**
-- Floating collectible with glow effect
-- Types: 'speed', 'double_jump', etc.
-- Changes player sprite when collected
-- One power-up added at position [55, 10]
+*   **Boss (1 pt): Distinct enemy with HP, patterns, a telegraphed weak phase, and a clear win condition. Show boss HP; provide hit feedback.**
+    *   ✅ **Achieved:** The `GyroBoss` is implemented with HP, phases, a vulnerable state, win condition, HP bar, and hit feedback.
+        ```python
+        # game/entities/boss.py
+        self.hp = settings.BOSS_HP
+        self.phase = 'spin_up'  # 'spin_up', 'hazard', 'recalibration'
+        self.vulnerable = True  # during 'recalibration'
+        # game/world/level.py
+if self.boss.defeated and self.player.rect.x > settings.WORLD_WIDTH - 100:
+    self.stack.replace_with_transition(WinState, self.player)
+        ```
+*   **Star (1 pt): Temporary power-up (~5–10 s) granting invulnerability/speed with unique visual and jingle; show timer/icon.**
+    *   ✅ **Achieved:** Flux Surge (Star) grants temporary invulnerability and speed with visual/audio feedback and a timer.
+        ```python
+        # game/entities/player.py
+        self.flux_surge_timer = Timer()
+        def activate_flux_surge(self):
+            self.flux_surge_timer.start(settings.FLUX_SURGE_DURATION)
+        # game/world/level.py
+        if star.update(dt, self.player.rect):
+            self.player.activate_flux_surge()
+            self.audio.play_sfx('star')
+        ```
 
-### 4. **Player Sprite Support**
-- Normal sprite: `game/assets/images/sprites/player.png`
-- Powered-up sprite: `game/assets/images/sprites/player_powered.png`
-- Sprites flip based on:
-  - Facing direction (left/right)
-  - Gravity direction (upside-down when inverted)
-- Powered-up state shows orange tint if no sprite
-- Flux Surge adds glowing effect
+## 5) Audio & Menu (2 pts total)
 
-### 5. **Game Over Screen Fix**
-- Now shows "TRANSMISSION FAILED" screen when dying
-- Two options:
-  - **Retry**: Respawns at last checkpoint
-  - **Main Menu**: Return to main menu
-- Player respawns automatically at checkpoint when selecting Retry
-- Maintains checkpoint coin count
+*   **Audio (1 pt): Looping BGM per level; SFX for jump, coin, crate break, enemy hit/defeat, star pickup, pause, confirm. Options for volume preferred.**
+    *   ✅ **Achieved:** Looping BGM per level, SFX for various actions, and volume options are implemented.
+        ```python
+        # game/io/audio.py
+        self.music_volume = 0.7
+        self.sfx_volume = 0.8
+        def play_music(self, filepath, loops=-1):
+        # game/world/level.py
+        self.audio.play_music(self.audio.MUSIC_GAME)
+        self.audio.play_sfx('coin')
+        ```
+*   **Menu (1 pt): Main Menu with New Game, Options, About, Exit; Options includes at least Music/SFX volume; About shows team, credits, controls.**
+    *   ✅ **Achieved:** Main Menu, Options, and About screens are implemented with required content.
+        ```python
+        # game/ui/main_menu.py
+        self.options = ['Resume Game', 'Level Select', 'New Game', 'How to Play', 'Options', 'About', 'Exit']
+        # game/ui/options.py
+        self.audio.set_music_volume(new_vol)
+        self.audio.set_sfx_volume(new_vol)
+        # game/ui/about.py
+        self.draw_section(content_surface, "CONTROLS", controls_items, 220, 'gravity')
+        self.draw_section(content_surface, "CREDITS", credits_items, y + 20, 'star')
+        ```
 
-## JSON Level Format Updates
+## 6) Game Structure & UX
 
-### New Entity Types:
+*   **States: Splash (optional) → Main Menu → Gameplay → Pause → Win/Lose → Back to Menu.**
+    *   ✅ **Achieved:** The core game state flow and transitions are implemented.
+        ```python
+        # game/main.py
+        state_stack.push(MainMenuState)
+        # game/core/state.py
+        class StateStack:
+            def push(self, state_class, *args, **kwargs):
+            def pop(self):
+            def replace(self, state_class, *args, **kwargs):
+        ```
+*   **Recommended: simple checkpoints; HUD shows Lives/HP, coins, optional timer, star/buff indicator, and (for boss fights) boss HP.**
+    *   ✅ **Achieved:** Simple checkpoints and a comprehensive HUD are implemented.
+        ```python
+        # game/entities/player.py
+        def set_checkpoint(self, pos):
+        def respawn(self):
+        # game/ui/hud.py
+        hp_text = f"HP: {player.hp}/{settings.PLAYER_HP}"
+        coin_text = f"Coins: {player.coins}"
+        time_text = f"Time: {game_time:.1f}s"
+        if boss and boss.alive:
+            boss.draw_hp_bar(screen)
+        ```
 
-```json
-"powerup": [
-    [col, row, "type"]
-],
-"spikes": [
-    [col, row, "orientation"]
-],
-"breakable": [
-    [col, row, "contents"]  // contents can be "coin", "powerup", or null
-]
-```
+## 9) Bonus Ideas
 
-### Example:
-```json
-"powerup": [[55, 10, "speed"]],
-"spikes": [[45, 19, "up"], [46, 19, "up"]],
-"breakable": [[28, 18, "coin"], [48, 16, "powerup"], [64, 18, null]]
-```
+*   **Multiple enemy defeat methods (e.g., stomp and projectile; parry; lures).**
+    *   ✅ **Achieved (Stomp and Projectile):** Player can stomp enemies or shoot them with bullets. Flux Surge also provides an instant kill.
+        ```python
+        # game/world/level.py
+        # Check bullet hits enemy
+        # Check stomp
+        if self.flux_surge_active:
+    enemy.take_damage()
+        ```
+    *   ❌ **Not Achieved:** Parry, lures.
+*   **Environmental puzzles that require moving objects to progress (bridges, numbered tiles, pressure plates).**
+    *   ✅ **Achieved:** Level 2 includes a puzzle with buttons controlling gates.
+        ```python
+        # game/world/level.py
+        # Wire button callbacks to gates for level 2 puzzle
+        if self.level_id == 2 and len(self.buttons) >= 2 and len(self.gates) >= 3:
+            self.buttons[0].on_toggle = toggle_gates_0_and_2
+        ```
+*   **Polish: particle effects, camera shake, squash-and-stretch, animation blending, save/load.**
+    *   ✅ **Achieved (Particle effects):** Breakable blocks and win screen have particle effects.
+        ```python
+        # game/entities/breakable.py
+        self.particle_offsets = [...] # For break animation
+        # game/ui/win.py
+        # Add animated particles
+        ```
+    *   ✅ **Achieved (Camera shake):** Camera shakes when player takes damage at low HP.
+        ```python
+        # game/entities/player.py
+        if camera and previous_hp >= 2 and self.hp == 1:
+            camera.shake()
+        ```
+    *   ✅ **Achieved (Animation):** Player walk/attack animations and star animation are present.
+        ```python
+        # game/entities/player.py
+        self.walk_frames = []
+        self.attack_frames = []
+        # game/entities/star.py
+        self.frames = [] # For star animation
+        ```
+    *   ✅ **Achieved (Save/load):** Comprehensive save/load system for game progress.
+        ```python
+        # game/core/save_system.py
+        class SaveSystem:
+            @staticmethod
+            def save_game(...):
+            @staticmethod
+            def complete_level(...):
+        ```
+    *   ❌ **Not explicitly Achieved:** Squash-and-stretch, animation blending.
+*   **Accessibility: color-blind safe UI, remappable keys.**
+    *   ✅ **Achieved (Remappable keys):** Controls can be remapped via the Options menu.
+        ```python
+        # game/ui/controls.py
+        self.key_bindings = stack.persistent_data.get('key_bindings', settings.DEFAULT_KEY_BINDINGS.copy())
+        ```
+    *   ❌ **Not Achieved:** Color-blind safe UI.
 
-## Asset Requirements
+## 10) Deliverables & Submission
 
-### Player Sprites (Optional):
-- `game/assets/images/sprites/player.png` - Normal player (24×32)
-- `game/assets/images/sprites/player_powered.png` - Powered-up player (24×32)
-
-### Power-up Sprites (Optional):
-- `game/assets/images/sprites/powerup_speed.png` (24×24)
-- Falls back to glowing "P" box if not found
-
-### Enemy Sprites (Already supported):
-- `game/assets/images/sprites/alienblue.png` (48×40)
-- `game/assets/images/sprites/aliengreen.png` (48×40)
-- `game/assets/images/sprites/alienred.png` (48×40)
-
-## Controls
-- **B** - Toggle debug hitboxes
-- All other controls remain the same
-
-## Known Changes
-- Enemies are now larger (48×40 instead of 28×20)
-- Stomp detection more forgiving (8px tolerance)
-- Death now shows lose screen before respawning
-- Power-up state persists across checkpoints
+*   **Source code + README.md (how to run, controls, engine version).**
+    *   ✅ **Achieved:** Source code is provided, and `README.md` includes setup, running instructions, controls, and engine information.
+        ```markdown
+        # README.md (excerpt)
+        ### Installation Steps
+        ```bash
+        pip install -r game/requirements.txt
+        ```
+        ### Running the Game
+        ```bash
+        python -m game.main
+        ```
+        ### Controls
+        - **Arrow Keys / WASD**: Move left and right
+        - **E / Shift**: Flip gravity (allows floating in space)
+        # ...
+        ## Key Features
+        ### Technical Features
+        - Built with Python & Pygame
+        ```

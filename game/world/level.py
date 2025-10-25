@@ -28,7 +28,7 @@ from game.ui.hud import HUD
 class LevelState(GameState):
     """Main gameplay state"""
     
-    def __init__(self, stack, level_id=1):
+    def __init__(self, stack, level_id=1, restore_checkpoint=False):
         super().__init__(stack)
         
         # Load level
@@ -66,23 +66,31 @@ class LevelState(GameState):
         # Spawn coins (always fresh)
         self.coins = []
         for pos in level_data['coins']:
-            self.coins.append(Coin(pos[0], pos[1]))
+            coin = Coin(pos[0], pos[1])
+            coin.initial_pos = (pos[0], pos[1])  # Store for identification
+            self.coins.append(coin)
         
         # Spawn stars (always fresh)
         self.stars = []
         for pos in level_data['stars']:
-            self.stars.append(FluxStar(pos[0], pos[1]))
+            star = FluxStar(pos[0], pos[1])
+            star.initial_pos = (pos[0], pos[1])
+            self.stars.append(star)
         
         # Spawn power-ups (always fresh)
         self.powerups = []
         for pdata in level_data.get('powerups', []):
-            self.powerups.append(PowerUp(pdata['x'], pdata['y'], pdata['type']))
+            powerup = PowerUp(pdata['x'], pdata['y'], pdata['type'])
+            powerup.initial_pos = (pdata['x'], pdata['y'])
+            self.powerups.append(powerup)
         
         # Spawn storm powerups (always fresh)
         self.storms = []
         for pos in level_data.get('storms', []):
             print(f"Loading storm at position: {pos}")  # Debug output
-            self.storms.append(StormPowerup(pos[0], pos[1]))
+            storm = StormPowerup(pos[0], pos[1])
+            storm.initial_pos = (pos[0], pos[1])
+            self.storms.append(storm)
         
         print(f"Total storms loaded: {len(self.storms)}")  # Debug output
         
@@ -95,12 +103,14 @@ class LevelState(GameState):
         self.gates = []
         for gdata in level_data.get('gates', []):
             gate = Gate(gdata['x'], gdata['y'], gdata['height'], gdata['orientation'])
+            gate.initial_pos = (gdata['x'], gdata['y'])
             self.gates.append(gate)
         
         # Spawn buttons
         self.buttons = []
         for bdata in level_data.get('buttons', []):
             button = Button(bdata['x'], bdata['y'], bdata['color'], bdata.get('facing', 'up'))
+            button.initial_pos = (bdata['x'], bdata['y'])
             self.buttons.append(button)
         
         # Wire button callbacks to gates for level 2 puzzle
@@ -120,7 +130,9 @@ class LevelState(GameState):
         # Spawn breakable blocks (always fresh)
         self.breakables = []
         for bdata in level_data.get('breakables', []):
-            self.breakables.append(BreakableBlock(bdata['x'], bdata['y'], bdata['contents']))
+            block = BreakableBlock(bdata['x'], bdata['y'], bdata['contents'])
+            block.initial_pos = (bdata['x'], bdata['y'])
+            self.breakables.append(block)
         
         # Spawn checkpoints
         self.checkpoints = []
@@ -134,6 +146,7 @@ class LevelState(GameState):
                 color = enemy_data.get('color', 'blue')
                 drone = Drone(enemy_data['x'], enemy_data['y'],
                             enemy_data['anchor'], enemy_data['range'], color)
+                drone.initial_pos = (enemy_data['x'], enemy_data['y'])
                 self.enemies.append(drone)
         
         # Spawn boss (only if boss exists in level)
@@ -178,6 +191,9 @@ class LevelState(GameState):
         # Debug mode
         self.show_hitboxes = False
         
+        # Checkpoint state persistence
+        self.checkpoint_data = None  # Stores snapshot when checkpoint activated
+        
         # Clear conditions tracking
         self.clear_conditions = ClearConditions(len(self.enemies))
         
@@ -186,6 +202,18 @@ class LevelState(GameState):
         
         # Boss music tracking
         self.boss_music_playing = False
+        
+        # Restore from saved checkpoint if requested
+        if restore_checkpoint:
+            saved_data = SaveSystem._load_data()
+            if 'game_state' in saved_data and saved_data['game_state']:
+                game_state = saved_data['game_state']
+                # Restore checkpoint data
+                if 'entities' in game_state and game_state['entities']:
+                    self.checkpoint_data = game_state['entities']
+                    # Apply the checkpoint state immediately
+                    self._restore_from_checkpoint_data()
+                    print("DEBUG: Restored from saved checkpoint")
     
     def enter(self, previous_state=None):
         """Called when entering this state"""
@@ -286,7 +314,7 @@ class LevelState(GameState):
             if star.update(dt, self.player.rect):
                 self.player.activate_flux_surge()
                 if self.audio:
-                    self.audio.play_sfx('star')
+                    self.audio.play_sfx('powerup')
         
         # Update power-ups (P icon - permanent double shot)
         for powerup in self.powerups:
@@ -315,10 +343,14 @@ class LevelState(GameState):
                     item = block.hit('any')
                     if item == 'coin':
                         # Spawn coin above block
-                        self.coins.append(Coin(block.rect.centerx - 8, block.rect.top - 20))
+                        coin = Coin(block.rect.centerx - 8, block.rect.top - 20)
+                        coin.initial_pos = (block.rect.centerx - 8, block.rect.top - 20)
+                        self.coins.append(coin)
                     elif item == 'powerup':
                         # Spawn power-up above block
-                        self.powerups.append(PowerUp(block.rect.centerx - 12, block.rect.top - 30))
+                        powerup = PowerUp(block.rect.centerx - 12, block.rect.top - 30)
+                        powerup.initial_pos = (block.rect.centerx - 12, block.rect.top - 30)
+                        self.powerups.append(powerup)
         
         # Update buttons
         for button in self.buttons:
@@ -382,20 +414,20 @@ class LevelState(GameState):
                         if previous_hp >= 2 and self.player.hp == 1:
                             self.low_health_flash_timer = 0.35
         
-        # Check if player is stuck on spikes (apply movement restrictions)
-        player_stuck_on_spikes = False
-        for spike in self.spikes:
-            if spike.is_player_stuck(self.player.rect, self.player.gravity_dir):
-                player_stuck_on_spikes = True
-                break
+        # # Check if player is stuck on spikes (apply movement restrictions)
+        # player_stuck_on_spikes = False
+        # for spike in self.spikes:
+        #     if spike.is_player_stuck(self.player.rect, self.player.gravity_dir):
+        #         player_stuck_on_spikes = True
+        #         break
         
-        # Apply sticky behavior - reduce movement speed when stuck on spikes
-        if player_stuck_on_spikes:
-            # Reduce horizontal movement speed significantly
-            self.player.vel_x *= 0.1  # Only 10% of normal speed
-            # Prevent jumping when stuck (make it harder to escape)
-            if self.player.vel_y < 0:  # If trying to jump
-                self.player.vel_y *= 0.3  # Reduce jump power
+        # # Apply sticky behavior - reduce movement speed when stuck on spikes
+        # if player_stuck_on_spikes:
+        #     # Reduce horizontal movement speed significantly
+        #     self.player.vel_x *= 0.1  # Only 10% of normal speed
+        #     # Prevent jumping when stuck (make it harder to escape)
+        #     if self.player.vel_y < 0:  # If trying to jump
+        #         self.player.vel_y *= 0.3  # Reduce jump power
         
         # Update checkpoints
         for checkpoint in self.checkpoints:
@@ -403,6 +435,8 @@ class LevelState(GameState):
                 # Set checkpoint to middle of checkpoint position
                 self.player.set_checkpoint((checkpoint.rect.centerx - self.player.rect.width // 2, 
                                            checkpoint.rect.bottom - self.player.rect.height))
+                # Capture game state when checkpoint is activated
+                self._capture_checkpoint_state()
                 if self.audio:
                     self.audio.play_sfx('checkpoint')
         
@@ -632,32 +666,107 @@ class LevelState(GameState):
     
     def _reset_to_checkpoint(self):
         """Reset level state when respawning from checkpoint"""
+        print("DEBUG: Resetting to checkpoint...")
         # Respawn player
         self.player.respawn()
         
         # Clear all bullets
         self.bullets.clear()
         
-        # Reset enemies to alive state
-        for enemy in self.enemies:
-            enemy.alive = True
-            enemy.hp = 1  # Reset enemy HP
-        
-        # Reset boss if exists
-        if self.boss:
-            self.boss_active = False  # Boss not active until player approaches
-            self.boss.defeated = False
-            self.boss.alive = True
-            self.boss.hp = settings.BOSS_HP
-            self.boss.vulnerable = False
-            self.boss.phase = 'spin_up'
-            self.boss.pattern_timer.start(settings.BOSS_PATTERN_DURATION)  # Restart timer
-            self.boss.phase_timer.stop()
-            self.boss.beam_rotation = 0
-            self.boss.spike_attack_timer = 0
-            self.boss.animated_spikes.clear()  # Clear all active spikes
-            self.boss_door_open = False
-            self.boss_music_playing = False
+        # Restore from checkpoint data if it exists
+        if self.checkpoint_data:
+            print("DEBUG: Restoring from checkpoint data")
+            # Restore player state
+            player_state = self.checkpoint_data['player']
+            self.player.hp = settings.PLAYER_HP  # Always restore to max HP on respawn
+            self.player.coins = player_state['coins']
+            self.player.double_shot = player_state['double_shot']
+            self.player.stamina_boost = player_state['stamina_boost']
+            self.player.max_stamina = player_state['max_stamina']
+            self.player.checkpoint_coins = player_state['checkpoint_coins']
+            self.player.last_hp_bonus_at = player_state['last_hp_bonus_at']
+            
+            # Restore enemy states - keep dead enemies dead
+            dead_enemy_positions = set(self.checkpoint_data['dead_enemies'])
+            for enemy in self.enemies:
+                if enemy.initial_pos in dead_enemy_positions:
+                    enemy.alive = False
+                    enemy.hp = 0
+                else:
+                    enemy.alive = True
+                    enemy.hp = 1
+            
+            # Restore enemies_defeated count
+            if 'enemies_defeated' in self.checkpoint_data:
+                self.clear_conditions.enemies_defeated = self.checkpoint_data['enemies_defeated']
+            
+            # Restore collected items - keep them collected
+            collected_coin_positions = set(self.checkpoint_data['collected_coins'])
+            for coin in self.coins:
+                if hasattr(coin, 'initial_pos'):
+                    coin.collected = coin.initial_pos in collected_coin_positions
+            
+            collected_star_positions = set(self.checkpoint_data['collected_stars'])
+            for star in self.stars:
+                if hasattr(star, 'initial_pos'):
+                    star.collected = star.initial_pos in collected_star_positions
+            
+            collected_powerup_positions = set(self.checkpoint_data['collected_powerups'])
+            for powerup in self.powerups:
+                if hasattr(powerup, 'initial_pos'):
+                    powerup.collected = powerup.initial_pos in collected_powerup_positions
+            
+            collected_storm_positions = set(self.checkpoint_data['collected_storms'])
+            for storm in self.storms:
+                if hasattr(storm, 'initial_pos'):
+                    storm.collected = storm.initial_pos in collected_storm_positions
+            
+            # Restore broken blocks
+            broken_block_positions = set(self.checkpoint_data['broken_blocks'])
+            for block in self.breakables:
+                block.broken = block.initial_pos in broken_block_positions
+            
+            # Restore button/gate states
+            button_states = self.checkpoint_data['button_states']
+            for button in self.buttons:
+                if button.initial_pos in button_states:
+                    button.pressed = button_states[button.initial_pos]
+            
+            gate_states = self.checkpoint_data['gate_states']
+            for gate in self.gates:
+                if gate.initial_pos in gate_states:
+                    gate.open = gate_states[gate.initial_pos]
+            
+            # Restore boss state
+            boss_state = self.checkpoint_data['boss_state']
+            if self.boss and boss_state:
+                self.boss.hp = boss_state['hp']
+                self.boss.defeated = boss_state['defeated']
+                self.boss.phase = boss_state['phase']
+                self.boss.alive = boss_state['alive']
+                self.boss_active = False  # Boss not active until player approaches
+                self.boss_door_open = boss_state['defeated']
+                self.boss_music_playing = False
+        else:
+            # No checkpoint data - reset to fresh state (original behavior)
+            for enemy in self.enemies:
+                enemy.alive = True
+                enemy.hp = 1
+            
+            if self.boss:
+                self.boss_active = False
+                self.boss.defeated = False
+                self.boss.alive = True
+                self.boss.hp = settings.BOSS_HP
+                self.boss.vulnerable = False
+                self.boss.phase = 'spin_up'
+                self.boss.pattern_timer.start(settings.BOSS_PATTERN_DURATION)
+                self.boss.phase_timer.stop()
+                self.boss.beam_rotation = 0
+                self.boss.spike_attack_timer = 0
+                self.boss.animated_spikes.clear()
+                self.boss_door_open = False
+                self.boss_music_playing = False
         
         # Reset input states so keys aren't stuck
         self.input_handler.reset_movement_inputs()
@@ -665,6 +774,185 @@ class LevelState(GameState):
         # Update camera to player position
         self.camera.x = self.player.rect.centerx - settings.SCREEN_WIDTH // 2
         self.camera.x = max(0, min(self.camera.x, settings.WORLD_WIDTH - settings.SCREEN_WIDTH))
+    
+    def _restore_from_checkpoint_data(self):
+        """Restore game state from checkpoint_data (used when loading saved game)"""
+        if not self.checkpoint_data:
+            return
+        
+        print("DEBUG: Applying checkpoint data...")
+        
+        # Restore player state
+        player_state = self.checkpoint_data.get('player', {})
+        if player_state:
+            self.player.hp = settings.PLAYER_HP  # Always restore to max HP
+            self.player.coins = player_state.get('coins', 0)
+            self.player.double_shot = player_state.get('double_shot', False)
+            self.player.stamina_boost = player_state.get('stamina_boost', False)
+            self.player.max_stamina = player_state.get('max_stamina', 1.0)
+            self.player.checkpoint_pos = tuple(player_state.get('checkpoint_pos', self.player.checkpoint_pos))
+            self.player.checkpoint_coins = player_state.get('checkpoint_coins', 0)
+            self.player.last_hp_bonus_at = player_state.get('last_hp_bonus_at', 0)
+            # Move player to checkpoint
+            self.player.rect.x, self.player.rect.y = self.player.checkpoint_pos
+        
+        # Restore enemy states (convert lists back to tuples for hashing)
+        dead_enemy_positions = set(tuple(pos) if isinstance(pos, list) else pos 
+                                   for pos in self.checkpoint_data.get('dead_enemies', []))
+        for enemy in self.enemies:
+            if hasattr(enemy, 'initial_pos'):
+                if enemy.initial_pos in dead_enemy_positions:
+                    enemy.alive = False
+                    enemy.hp = 0
+        
+        # Restore enemies_defeated count for clear conditions
+        if 'enemies_defeated' in self.checkpoint_data:
+            self.clear_conditions.enemies_defeated = self.checkpoint_data['enemies_defeated']
+        
+        # Restore collected items (convert lists back to tuples for hashing)
+        collected_coin_positions = set(tuple(pos) if isinstance(pos, list) else pos 
+                                       for pos in self.checkpoint_data.get('collected_coins', []))
+        for coin in self.coins:
+            if hasattr(coin, 'initial_pos'):
+                coin.collected = coin.initial_pos in collected_coin_positions
+        
+        collected_star_positions = set(tuple(pos) if isinstance(pos, list) else pos 
+                                       for pos in self.checkpoint_data.get('collected_stars', []))
+        for star in self.stars:
+            if hasattr(star, 'initial_pos'):
+                star.collected = star.initial_pos in collected_star_positions
+        
+        collected_powerup_positions = set(tuple(pos) if isinstance(pos, list) else pos 
+                                          for pos in self.checkpoint_data.get('collected_powerups', []))
+        for powerup in self.powerups:
+            if hasattr(powerup, 'initial_pos'):
+                powerup.collected = powerup.initial_pos in collected_powerup_positions
+        
+        collected_storm_positions = set(tuple(pos) if isinstance(pos, list) else pos 
+                                        for pos in self.checkpoint_data.get('collected_storms', []))
+        for storm in self.storms:
+            if hasattr(storm, 'initial_pos'):
+                storm.collected = storm.initial_pos in collected_storm_positions
+        
+        # Restore broken blocks (convert lists back to tuples for hashing)
+        broken_block_positions = set(tuple(pos) if isinstance(pos, list) else pos 
+                                     for pos in self.checkpoint_data.get('broken_blocks', []))
+        for block in self.breakables:
+            if hasattr(block, 'initial_pos'):
+                block.broken = block.initial_pos in broken_block_positions
+        
+        # Restore button/gate states (convert string keys back to tuples if needed)
+        button_states_raw = self.checkpoint_data.get('button_states', {})
+        button_states = {}
+        for key, value in button_states_raw.items():
+            # Convert string representation back to tuple if needed
+            if isinstance(key, str):
+                # JSON converts tuple keys to strings like "[x, y]"
+                import ast
+                try:
+                    key = tuple(ast.literal_eval(key))
+                except:
+                    pass
+            elif isinstance(key, list):
+                key = tuple(key)
+            button_states[key] = value
+        
+        for button in self.buttons:
+            if hasattr(button, 'initial_pos') and button.initial_pos in button_states:
+                button.pressed = button_states[button.initial_pos]
+        
+        gate_states_raw = self.checkpoint_data.get('gate_states', {})
+        gate_states = {}
+        for key, value in gate_states_raw.items():
+            if isinstance(key, str):
+                import ast
+                try:
+                    key = tuple(ast.literal_eval(key))
+                except:
+                    pass
+            elif isinstance(key, list):
+                key = tuple(key)
+            gate_states[key] = value
+        
+        for gate in self.gates:
+            if hasattr(gate, 'initial_pos') and gate.initial_pos in gate_states:
+                gate.open = gate_states[gate.initial_pos]
+        
+        # Restore boss state
+        boss_state = self.checkpoint_data.get('boss_state')
+        if self.boss and boss_state:
+            self.boss.hp = boss_state.get('hp', self.boss.hp)
+            self.boss.defeated = boss_state.get('defeated', False)
+            self.boss.phase = boss_state.get('phase', 'spin_up')
+            self.boss.alive = boss_state.get('alive', True)
+            self.boss_door_open = boss_state.get('defeated', False)
+        
+        # Restore game time if available
+        if 'game_time' in self.checkpoint_data:
+            # Note: Stopwatch doesn't have a direct set method, would need to add one
+            pass
+    
+    def _capture_checkpoint_state(self):
+        """Capture current game state when checkpoint is activated"""
+        print("DEBUG: Capturing checkpoint state...")
+        # Capture dead enemies by their initial positions
+        dead_enemies = []
+        for enemy in self.enemies:
+            if not enemy.alive:
+                dead_enemies.append(enemy.initial_pos)
+        print(f"DEBUG: Dead enemies: {len(dead_enemies)}")
+        
+        # Capture collected items by their initial positions
+        collected_coins = [coin.initial_pos for coin in self.coins if coin.collected and hasattr(coin, 'initial_pos')]
+        collected_stars = [star.initial_pos for star in self.stars if star.collected and hasattr(star, 'initial_pos')]
+        collected_powerups = [powerup.initial_pos for powerup in self.powerups if powerup.collected and hasattr(powerup, 'initial_pos')]
+        collected_storms = [storm.initial_pos for storm in self.storms if storm.collected and hasattr(storm, 'initial_pos')]
+        print(f"DEBUG: Collected coins: {len(collected_coins)}, stars: {len(collected_stars)}, powerups: {len(collected_powerups)}, storms: {len(collected_storms)}")
+        
+        # Capture broken blocks
+        broken_blocks = [block.initial_pos for block in self.breakables if block.broken]
+        
+        # Capture button/gate states (convert tuple keys to strings for JSON compatibility)
+        button_states = {str(btn.initial_pos): btn.pressed for btn in self.buttons}
+        gate_states = {str(gate.initial_pos): gate.open for gate in self.gates}
+        
+        # Capture boss state if exists
+        boss_state = None
+        if self.boss:
+            boss_state = {
+                'hp': self.boss.hp,
+                'defeated': self.boss.defeated,
+                'phase': self.boss.phase,
+                'alive': self.boss.alive
+            }
+        
+        # Capture player state
+        player_state = {
+            'hp': self.player.hp,
+            'coins': self.player.coins,
+            'double_shot': self.player.double_shot,
+            'stamina_boost': self.player.stamina_boost,
+            'max_stamina': self.player.max_stamina,
+            'checkpoint_pos': self.player.checkpoint_pos,
+            'checkpoint_coins': self.player.checkpoint_coins,
+            'last_hp_bonus_at': self.player.last_hp_bonus_at
+        }
+        
+        # Store all state in checkpoint_data
+        self.checkpoint_data = {
+            'player': player_state,
+            'dead_enemies': dead_enemies,
+            'collected_coins': collected_coins,
+            'collected_stars': collected_stars,
+            'collected_powerups': collected_powerups,
+            'collected_storms': collected_storms,
+            'broken_blocks': broken_blocks,
+            'button_states': button_states,
+            'gate_states': gate_states,
+            'boss_state': boss_state,
+            'game_time': self.stopwatch.get_time(),
+            'enemies_defeated': self.clear_conditions.enemies_defeated
+        }
     
     def _activate_storm_effect(self):
         """Activate storm effect - clear enemies in large radius"""

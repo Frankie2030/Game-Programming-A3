@@ -13,7 +13,7 @@ class PauseState(GameState):
     
     def __init__(self, stack):
         super().__init__(stack)
-        self.options = ['Resume', 'Save & Exit', 'Exit Without Saving', 'Restart', 'Options', 'Main Menu']
+        self.options = ['Resume', 'Save & Exit', 'Restart', 'Options', 'Main Menu']
         self.selected = 0
         self.title_font = pygame.font.Font(None, 72)
         self.menu_font = pygame.font.Font(None, 48)
@@ -68,8 +68,8 @@ class PauseState(GameState):
             self.stack.pop()
         elif option == 'Save & Exit':
             self._save_and_exit()
-        elif option == 'Exit Without Saving':
-            self._exit_without_saving()
+        # elif option == 'Exit Without Saving':
+        #     self._exit_without_saving()
         elif option == 'Restart':
             from game.world.level import LevelState
             self.stack.pop()  # Remove pause
@@ -115,24 +115,18 @@ class PauseState(GameState):
             
             # Boss data
             boss_data = {
-                'hp': level_state.boss.hp if hasattr(level_state, 'boss') else 8,
-                'max_hp': level_state.boss.max_hp if hasattr(level_state, 'boss') else 8,
-                'alive': level_state.boss.alive if hasattr(level_state, 'boss') else True,
-                'defeated': level_state.boss.defeated if hasattr(level_state, 'boss') else False,
-                'phase': level_state.boss.phase if hasattr(level_state, 'boss') else 'spin_up',
-                'vulnerable': level_state.boss.vulnerable if hasattr(level_state, 'boss') else False,
+                'hp': level_state.boss.hp if (hasattr(level_state, 'boss') and level_state.boss) else 8,
+                'max_hp': level_state.boss.max_hp if (hasattr(level_state, 'boss') and level_state.boss and hasattr(level_state.boss, 'max_hp')) else 8,
+                'alive': level_state.boss.alive if (hasattr(level_state, 'boss') and level_state.boss) else True,
+                'defeated': level_state.boss.defeated if (hasattr(level_state, 'boss') and level_state.boss) else False,
+                'phase': level_state.boss.phase if (hasattr(level_state, 'boss') and level_state.boss) else 'spin_up',
+                'vulnerable': level_state.boss.vulnerable if (hasattr(level_state, 'boss') and level_state.boss) else False,
                 'boss_active': getattr(level_state, 'boss_active', False),
                 'boss_door_open': getattr(level_state, 'boss_door_open', False)
             }
             
-            # Entities data
-            entities_data = {
-                'coins': [{'x': coin.rect.x, 'y': coin.rect.y, 'collected': coin.collected} for coin in level_state.coins],
-                'stars': [{'x': star.rect.x, 'y': star.rect.y, 'collected': star.collected} for star in level_state.stars],
-                'powerups': [{'x': p.rect.x, 'y': p.rect.y, 'collected': p.collected, 'type': p.powerup_type} for p in level_state.powerups],
-                'enemies': [{'x': e.rect.x, 'y': e.rect.y, 'alive': e.alive} for e in level_state.enemies],
-                'breakables': [{'x': b.rect.x, 'y': b.rect.y, 'broken': b.broken, 'contents': b.contents} for b in level_state.breakables]
-            }
+            # Use checkpoint data if available, otherwise create empty state
+            entities_data = level_state.checkpoint_data if hasattr(level_state, 'checkpoint_data') and level_state.checkpoint_data else None
             
             game_time = level_state.stopwatch.get_time()
             coins_collected = level_state.player.coins
