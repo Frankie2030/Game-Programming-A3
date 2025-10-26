@@ -179,7 +179,8 @@ class SaveSystem:
     @staticmethod
     def has_resume():
         """Check if there's a level in progress to resume"""
-        return SaveSystem.get_current_level() is not None
+        data = SaveSystem._load_data()
+        return data.get('current_level') is not None and 'game_state' in data
     
     @staticmethod
     def has_save():

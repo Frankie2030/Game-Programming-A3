@@ -687,7 +687,9 @@ class LevelState(GameState):
             self.player.last_hp_bonus_at = player_state['last_hp_bonus_at']
             
             # Restore enemy states - keep dead enemies dead
-            dead_enemy_positions = set(self.checkpoint_data['dead_enemies'])
+            dead_enemy_positions = set(tuple(pos) if isinstance(pos, list) else pos
+                           for pos in self.checkpoint_data['dead_enemies'])
+
             for enemy in self.enemies:
                 if enemy.initial_pos in dead_enemy_positions:
                     enemy.alive = False
@@ -701,41 +703,64 @@ class LevelState(GameState):
                 self.clear_conditions.enemies_defeated = self.checkpoint_data['enemies_defeated']
             
             # Restore collected items - keep them collected
-            collected_coin_positions = set(self.checkpoint_data['collected_coins'])
+            collected_coin_positions = set(tuple(pos) if isinstance(pos, list) else pos
+                               for pos in self.checkpoint_data['collected_coins'])
             for coin in self.coins:
                 if hasattr(coin, 'initial_pos'):
                     coin.collected = coin.initial_pos in collected_coin_positions
-            
-            collected_star_positions = set(self.checkpoint_data['collected_stars'])
+
+            collected_star_positions = set(tuple(pos) if isinstance(pos, list) else pos
+                               for pos in self.checkpoint_data['collected_stars'])
             for star in self.stars:
                 if hasattr(star, 'initial_pos'):
                     star.collected = star.initial_pos in collected_star_positions
-            
-            collected_powerup_positions = set(self.checkpoint_data['collected_powerups'])
+
+            collected_powerup_positions = set(tuple(pos) if isinstance(pos, list) else pos
+                               for pos in self.checkpoint_data['collected_powerups'])
             for powerup in self.powerups:
                 if hasattr(powerup, 'initial_pos'):
                     powerup.collected = powerup.initial_pos in collected_powerup_positions
-            
-            collected_storm_positions = set(self.checkpoint_data['collected_storms'])
+
+            collected_storm_positions = set(tuple(pos) if isinstance(pos, list) else pos
+                               for pos in self.checkpoint_data['collected_storms'])
             for storm in self.storms:
                 if hasattr(storm, 'initial_pos'):
                     storm.collected = storm.initial_pos in collected_storm_positions
             
             # Restore broken blocks
-            broken_block_positions = set(self.checkpoint_data['broken_blocks'])
+            broken_block_positions = set(tuple(pos) if isinstance(pos, list) else pos
+                           for pos in self.checkpoint_data['broken_blocks'])
             for block in self.breakables:
                 block.broken = block.initial_pos in broken_block_positions
             
             # Restore button/gate states
-            button_states = self.checkpoint_data['button_states']
-            for button in self.buttons:
-                if button.initial_pos in button_states:
-                    button.pressed = button_states[button.initial_pos]
+            button_states_raw = self.checkpoint_data['button_states']
+            button_states = {}
+            for key, value in button_states_raw.items():
+                if isinstance(key, str):
+                    import ast
+                    try:
+                        key = tuple(ast.literal_eval(key))
+                    except:
+                        pass
+                elif isinstance(key, list):
+                    key = tuple(key)
+                button_states[key] = value
+
             
-            gate_states = self.checkpoint_data['gate_states']
-            for gate in self.gates:
-                if gate.initial_pos in gate_states:
-                    gate.open = gate_states[gate.initial_pos]
+            gate_states_raw = self.checkpoint_data['gate_states']
+            gate_states = {}
+            for key, value in gate_states_raw.items():
+                if isinstance(key, str):
+                    import ast
+                    try:
+                        key = tuple(ast.literal_eval(key))
+                    except:
+                        pass
+                elif isinstance(key, list):
+                    key = tuple(key)
+                gate_states[key] = value
+
             
             # Restore boss state
             boss_state = self.checkpoint_data['boss_state']

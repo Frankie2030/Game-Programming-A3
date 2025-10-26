@@ -181,5 +181,6 @@ Built as a demonstration of gravity-based platforming mechanics with polarity-dr
 - [Star Sprite Set](https://soulofkiran.itch.io/pixel-art-animated-star)
 - [Stamina Sprite](https://iconscout.com/icon/improve-energy-icon_9055343)
 - SFX: 
-  - Game Over: https://pixabay.com/sound-effects/game-over-39-199830/
+  - [Game Over](https://pixabay.com/sound-effects/game-over-39-199830/)
+  - [Damage taken](https://www.101soundboards.com/boards/965630-arknights-dead-sound-soundboard)
   - Others: Super Mario Bros
