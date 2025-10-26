@@ -585,7 +585,7 @@ class LevelState(GameState):
         
         # Draw spikes
         for spike in self.spikes:
-            spike.draw(screen, self.camera)
+            spike.draw(screen, self.camera, self.show_hitboxes)
         
         # Draw gates
         for gate in self.gates:
@@ -752,6 +752,21 @@ class LevelState(GameState):
             for enemy in self.enemies:
                 enemy.alive = True
                 enemy.hp = 1
+            
+            for coin in self.coins:
+                coin.collected = False
+            
+            for star in self.stars:
+                star.collected = False
+            
+            for powerup in self.powerups:
+                powerup.collected = False
+            
+            for storm in self.storms:
+                storm.collected = False
+            
+            self.clear_conditions.enemies_defeated = 0
+            self.player.coins = 0
             
             if self.boss:
                 self.boss_active = False

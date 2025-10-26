@@ -19,6 +19,7 @@ class AudioManager:
     SFX_COIN = 'game/assets/audio/sfx/coin.ogg'
     SFX_POWERUP = 'game/assets/audio/sfx/powerup.ogg'
     SFX_GAME_OVER = 'game/assets/audio/sfx/game-over-39-199830.mp3'
+    SFX_DEAD = 'game/assets/audio/sfx/dead-sound.mp3'
     
     def __init__(self):
         pygame.mixer.init()
@@ -106,6 +107,7 @@ class AudioManager:
         self.load_sfx('coin', self.SFX_COIN)
         self.load_sfx('powerup', self.SFX_POWERUP)
         self.load_sfx('game_over', self.SFX_GAME_OVER)
+        self.load_sfx('dead-sound', self.SFX_DEAD)
         
         # Load placeholder SFX for sounds we don't have files for yet
         placeholder_sfx = ['jump', 'gravity_flip', 'hit', 'enemy_defeat', 

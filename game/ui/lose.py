@@ -13,7 +13,7 @@ class LoseState(GameState):
     
     def __init__(self, stack):
         super().__init__(stack)
-        self.options = ['Retry', 'Main Menu']
+        self.options = ['Retry From Checkpoint', 'Main Menu']
         self.selected = 0
         self.title_font = pygame.font.Font(None, 72)
         self.menu_font = pygame.font.Font(None, 48)
@@ -64,7 +64,7 @@ class LoseState(GameState):
         """Handle selection"""
         option = self.options[self.selected]
         
-        if option == 'Retry':
+        if option == 'Retry From Checkpoint':
             # Return to gameplay with transition
             self.stack.pop_with_transition()
         elif option == 'Main Menu':

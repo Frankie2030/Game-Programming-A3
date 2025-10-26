@@ -351,10 +351,14 @@ class Player:
         self.hp -= amount
         self.invuln_timer.start(settings.PLAYER_INVULN_TIME)
         
+        # Play dead-sound effect when taking damage
+        if self.audio:
+            self.audio.play_sfx('dead-sound')
+        
         print(f"DEBUG: Damage taken! Previous HP: {previous_hp}, New HP: {self.hp}")
         
-        # Trigger camera shake if health drops to 1 (from 2 or higher)
-        if camera and previous_hp >= 2 and self.hp == 1:
+        # Trigger camera shake
+        if camera and previous_hp >= 2:
             print(f"DEBUG: Camera shake triggered! Previous HP: {previous_hp}, Current HP: {self.hp}")
             camera.shake()
         

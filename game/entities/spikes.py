@@ -77,7 +77,7 @@ class Spikes:
         
         return False
     
-    def draw(self, screen, camera):
+    def draw(self, screen, camera, show_hitboxes=False):
         """Draw spikes"""
         draw_rect = self.rect.copy()
         draw_rect.x -= camera.x
@@ -127,6 +127,10 @@ class Spikes:
                     (draw_rect.left, y + spike_width)
                 ]
                 pygame.draw.polygon(screen, spike_color, points)
+        
+        # Draw hitbox if debug mode is enabled
+        if show_hitboxes:
+            pygame.draw.rect(screen, (255, 0, 255), draw_rect, 2)  # Magenta outline
 
 
 class AnimatedSpike:
@@ -212,7 +216,7 @@ class AnimatedSpike:
         
         return False
     
-    def draw(self, screen, camera):
+    def draw(self, screen, camera, show_hitboxes=False):
         """Draw animated spike"""
         draw_x = self.x - camera.x
         draw_y = self.y - camera.y
@@ -260,3 +264,11 @@ class AnimatedSpike:
                     ]
                     pygame.draw.polygon(screen, spike_color, points)
                     pygame.draw.polygon(screen, (150, 30, 30), points, 2)
+        
+        # Draw hitbox if debug mode is enabled
+        if show_hitboxes and self.is_dangerous():
+            hitbox = self.get_hitbox()
+            debug_rect = hitbox.copy()
+            debug_rect.x -= camera.x
+            debug_rect.y -= camera.y
+            pygame.draw.rect(screen, (255, 0, 255), debug_rect, 2)  # Magenta outline
