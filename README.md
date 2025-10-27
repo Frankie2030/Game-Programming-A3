@@ -21,29 +21,30 @@ pip install -r game/requirements.txt
 ```
 
 ### Running the Game
+From A3/ directory, run:
 ```bash
 python -m game.main
+```
+or:
+```bash
+python run.py
 ```
 
 ## Controls
 
-### Movement
-- **Arrow Keys / WASD**: Move left and right
-- **Space / W / Up Arrow**: Jump
-- **E / Shift**: Flip gravity (allows floating in space)
-
 ### Interface
-- **ESC**: Pause game / Open menu
+- **ESC**: Pause game / Back to Previous Menu
 - **B**: Toggle debug mode (hitbox visualization)
 - **Enter**: Confirm selections in menus
 
 ## How to Play
 
 ### Basic Mechanics
-1. **Movement**: Use standard platforming controls to navigate the station
-2. **Gravity Flip**: Press E to reverse your gravity, allowing you to walk on ceilings
-3. **Floating**: When not touching ground or ceiling, you float in space - but this drains stamina
-4. **Stamina Management**: Your stamina bar appears when floating or regenerating. It takes 5 seconds to fully drain and causes 1 HP damage when depleted
+1. **Movement**: Use standard platforming controls to navigate the station (**WASD**).
+2. **Gravity Flip**: Press E to reverse your gravity, allowing you to walk on ceilings and floating in space. When floating (not touching ground or ceiling), you drain stamina. Your stamina bar appears when floating or regenerating. When the stamina is fully drained, you will not be able to float until it has been fully recharged.
+3. **Weapons**: Press Space to shoot the enemies with outerspace bullets.
+
+**Note**: The keys are remappable to your customization.
 
 ### Combat System
 - **Enemy Elimination**: Stomp on enemies from the opposite gravity direction
@@ -52,8 +53,8 @@ python -m game.main
 
 ### Collectibles and Power-ups
 - **Data Canisters (Coins)**: Collect these throughout the level
-- **Power-ups**: Enhance your abilities, including 3x faster stamina regeneration
-- **Flux Surge Stars**: Grant 7 seconds of invincibility and increased speed
+- **Power-ups**: Enhance your abilities, including faster stamina regeneration
+- **Flux Surge Stars**: Grant temporary invincibility and increased speed
 - **Breakable Containers**: Destroy crates and panels to reveal hidden items
 
 ### Progression System
@@ -64,15 +65,15 @@ python -m game.main
 ### Victory Conditions and Star Rating
 
 #### Clear Conditions
-1. **1 Star (Mandatory)**: Defeat the Gyro-Core boss
+1. **1 Star (Mandatory)**: Complete the Stage
 2. **2 Stars**: Defeat ALL enemies in the level
 3. **3 Stars**: Complete the entire level within 120 seconds
 
 #### HUD Information
-- **Health Points**: Current HP out of maximum
-- **Coins Collected**: Running total of data canisters
-- **Enemy Progress**: Shows defeated/total enemies (e.g., "Enemies: 3/10")
-- **Timer**: Current completion time (turns red after 120 seconds)
+- **Health Points**
+- **Data Canisters**: Running total of coins collected
+- **Enemy Progress**: Shows (defeated / total) enemies
+- **Timer**
 - **Stamina Bar**: Appears above player when floating or regenerating
 
 ### Boss Battle
@@ -80,46 +81,16 @@ python -m game.main
 - **Vulnerable Windows**: Attack during the recalibration phase (yellow core)
 - **Pattern Recognition**: Learn and adapt to the boss's behavior cycles
 
-### Audio Design
-- **Background Music**: Atmospheric space-themed soundtrack
-- **Sound Effects**: 
-  - Bump sounds when hitting walls/ceilings during jumps
-  - Stomp effects for enemy defeats
-  - Coin collection chimes
-  - Power-up activation sounds
-
-## Key Features
-
-### Core Mechanics
-- Gravity-flip mechanics with cooldown system
-- Stamina-based floating system (5-second drain, HP penalty)
-- Invincibility frames with visual feedback
-- Power-up enhanced stamina regeneration (3x faster)
-
-### Combat and Interaction
-- Gravity-aware enemy stomp system
-- Directional combat based on gravity orientation
-- Breakable tiles with dynamic collision updates
-- Bullet-based ranged combat system
-
-### Progression and Rewards
-- Three-tier star rating system based on performance
-- Real-time enemy defeat tracking
-- Time-based completion challenges
-- Persistent coin collection and checkpoints
-
-### Technical Features
-- Horizontal scrolling camera with smooth following
-- JSON-based level loading and entity placement
-- Comprehensive audio system (BGM and contextual SFX)
-- Full menu system with pause/resume functionality
-- Dynamic HUD with real-time progress tracking
-
-### Visual and Audio
-- Sprite-based animation system with multiple states
-- Boss HP visualization and phase indicators
-- Stamina bar with color-coded status feedback
-- Atmospheric space-themed audio design
+## Other Features
+- Save and Load (from checkpoint)
+- Pause menu with full functionality
+- Comprehensive Guide for Players
+- Powerups (Double Shot, Invincibility, Stamina Boost)
+- I-frames with visual feedback
+- Breakable tiles
+- Clear condition with Star rating system
+- Horizontal scrolling camera
+- Environmental Puzzle (with buttons and gates)
 
 ## Codebase Structure
 
@@ -131,7 +102,7 @@ game/
 │   │   └── sfx/             # Sound effect files
 │   ├── images/
 │   │   └── sprites/         # Character and entity sprites
-│   └── levels/              # JSON level data files
+│   └── levels/              # JSON level data files (we modify entities appear in the level here)
 ├── core/
 │   ├── clear_conditions.py  # Star rating and victory tracking
 │   ├── settings.py          # Game constants and configuration
@@ -159,14 +130,6 @@ game/
 │   └── [menu states]        # Various menu implementations
 └── main.py                  # Application entry point
 ```
-
-## Level Design
-
-The level (5120×720) includes:
-1. **Tutorial** (0-800px): Basic movement, first gravity flip
-2. **Breakable Corridor** (800-2000px): Crates and electro-panels
-3. **Flow Section** (2000-3600px): Alternating ceiling/floor platforms
-4. **Boss Arena** (3600-5120px): Gyro-Core battle
 
 ## Asset Credits
 
